@@ -1,0 +1,14 @@
+RawFile: SimpleGrid.raw
+Resolution: 5 5 1
+Format: FLOAT32
+BasisVector1: 0.9 0 0
+BasisVector2: 0 0.9 0
+BasisVector3: 0 0 1
+Offset: 0.05 0.05 0
+WorldVector1: 1 0 0 0
+WorldVector2: 0 1 0 0
+WorldVector3: 0 0 1 0
+WorldVector4: 0 0 0 1
+DataRange: 1 9
+ValueRange: 1 9
+Unit: arb. unit.

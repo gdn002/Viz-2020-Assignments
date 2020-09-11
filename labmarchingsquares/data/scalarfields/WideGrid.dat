@@ -1,0 +1,14 @@
+RawFile: WideGrid.raw
+Resolution: 8 8 1
+Format: FLOAT32
+BasisVector1: 0.8 0 0
+BasisVector2: 0 0.8 0
+BasisVector3: 0 0 1
+Offset: 0.1 0.1 0
+WorldVector1: 1 0 0 0
+WorldVector2: 0 1 0 0
+WorldVector3: 0 0 1 0
+WorldVector4: 0 0 0 1
+DataRange: 0.00820948 0.92526
+ValueRange: 0.00820948 0.92526
+Unit: arb. unit.
