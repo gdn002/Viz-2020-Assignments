@@ -1,5 +1,5 @@
 /*********************************************************************
- *  Author  : Himangshu Saikia, Wiebke Koepp, ...
+ *  Author  : Himangshu Saikia, Wiebke Koepp, Anke Friederici
  *  Init    : Monday, September 11, 2017 - 12:58:42
  *
  *  Project : KTH Inviwo Modules
@@ -23,25 +23,24 @@
 #include <inviwo/core/datastructures/geometry/basicmesh.h>
 #include <labutils/scalarvectorfield.h>
 
+#include <random>
+
 namespace inviwo {
 
 /** \docpage{org.inviwo.MarchingSquares, Marching Squares}
     ![](org.inviwo.MarchingSquares.png?classIdentifier=org.inviwo.MarchingSquares)
-
     Extraction of isocontours in 2D with the marching squares algorithm.
-
     ### Inports
       * __data__ The input is a 2-dimensional scalar field (with a single value at each position
       represented in a 2-dimension uniform structured grid.
-
-
     ### Outports
-      * __mesh__ The output mesh contains (possibly multiple) iso contours as well as gridlines
-
+      * __isolinesmesh__ Mesh with (possibly multiple) iso contours
+      * __gridmesh__ Mesh with boundling box and potentially grid lines
     ### Properties
       * __propShowGrid__ Display grid lines if true, do not display grid lines if false.
       * __propGridColor__ Color of the grid lines
       * __propDeciderType__ Type of decider for ambiguities in marching squares
+	  * __propSeed__ Seed for random decision
       * __propMultiple__ Display of one iso contour or multiple
       * __propIsoValue__ Iso value for one iso contour
       * __propIsoColor__ Color for iso contour(s)
@@ -73,13 +72,18 @@ protected:
     void drawLineSegment(const vec2& v1, const vec2& v2, const vec4& color,
                          IndexBufferRAM* indexBuffer, std::vector<BasicMesh::Vertex>& vertices);
 
+	float randomValue(const float min, const float max) const;
+
     // Ports
 public:
     // Input data
     VolumeInport inData;
 
-    // Output mesh
-    MeshOutport meshOut;
+    // Output mesh for isolines
+    MeshOutport meshIsoOut;
+
+    // Output mesh for bounding box and gridlines
+    MeshOutport meshGridOut;
 
     // Properties
 public:
@@ -87,6 +91,7 @@ public:
     BoolProperty propShowGrid;
     FloatVec4Property propGridColor;
     TemplateOptionProperty<int> propDeciderType;
+    Int64Property propRandomSeed;
     TemplateOptionProperty<int> propMultiple;
     // Properties for choosing a single iso contour by value
     DoubleProperty propIsoValue;
@@ -97,6 +102,9 @@ public:
 
     // Attributes
 private:
+    mutable std::mt19937 randGenerator;
+    mutable std::uniform_real_distribution<float> uniformReal;
+
 };
 
 }  // namespace inviwo
