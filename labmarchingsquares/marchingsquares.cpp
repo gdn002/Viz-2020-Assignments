@@ -367,11 +367,9 @@ void MarchingSquares::process() {
                                             indexBufferIso.get(), gridvertices);
 
 							// ** TASK 3.1.C END **
-						}
+						} 
+						break;
                     }
-
-                    
-                    continue;
                 }
             }
         }
