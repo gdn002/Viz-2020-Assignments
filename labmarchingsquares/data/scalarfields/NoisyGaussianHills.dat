@@ -1,0 +1,19 @@
+RawFile: NoisyGaussianHills.raw
+Resolution: 128 128 1
+Format: FLOAT32
+ByteOffset: 0
+BasisVector1: 1.0 0.0 0.0
+BasisVector2: 0.0 1.0 0.0
+BasisVector3: 0.0 0.0 0.015625
+Offset: 0.0 0.0 0.984375
+WorldVector1: 1.0 0.0 0.0 0.0
+WorldVector2: 0.0 1.0 0.0 0.0
+WorldVector3: 0.0 0.0 1.0 0.0
+WorldVector4: 0.0 0.0 0.0 1.0
+DataRange: -0.9140977263450623 0.9116990566253662
+ValueRange: -0.9140977263450623 0.9116990566253662
+Unit: arb. unit.
+SwizzleMask: rgba
+Interpolation: Linear
+Wrapping: Clamp Clamp Clamp
+filename: C:/Users/Wiebke/Documents/Datasets/2DT datasets/NoisyHill.sampled.am

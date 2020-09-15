@@ -29,13 +29,17 @@ namespace inviwo {
 
 /** \docpage{org.inviwo.MarchingSquares, Marching Squares}
     ![](org.inviwo.MarchingSquares.png?classIdentifier=org.inviwo.MarchingSquares)
+
     Extraction of isocontours in 2D with the marching squares algorithm.
+
     ### Inports
       * __data__ The input is a 2-dimensional scalar field (with a single value at each position
       represented in a 2-dimension uniform structured grid.
+
     ### Outports
       * __isolinesmesh__ Mesh with (possibly multiple) iso contours
       * __gridmesh__ Mesh with boundling box and potentially grid lines
+
     ### Properties
       * __propShowGrid__ Display grid lines if true, do not display grid lines if false.
       * __propGridColor__ Color of the grid lines
