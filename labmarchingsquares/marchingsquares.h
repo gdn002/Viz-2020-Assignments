@@ -66,13 +66,15 @@ protected:
     /// Our main computation function
     virtual void process() override;
 
-    // (TODO: Helper functions can be defined here and then implemented in the .cpp)
+    // Helper functions to be defined here and then implemented in the .cpp
+    void drawIsoContour(const ScalarField2& grid, const double isoValue, const vec4& color,
+                        IndexBufferRAM* indexBuffer, std::vector<BasicMesh::Vertex>& vertices);
 
     // Draw a line segment from v1 to v2 with a color
     void drawLineSegment(const vec2& v1, const vec2& v2, const vec4& color,
                          IndexBufferRAM* indexBuffer, std::vector<BasicMesh::Vertex>& vertices);
 
-	float randomValue(const float min, const float max) const;
+    float randomValue(const float min, const float max) const;
 
     // Ports
 public:

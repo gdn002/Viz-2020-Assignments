@@ -98,13 +98,8 @@ MarchingSquares::MarchingSquares()
             util::show(propIsoValue, propIsoColor);
             util::hide(propNumContours, propIsoTransferFunc);
         } else {
-            util::hide(propIsoValue);
-            util::show(propIsoColor, propNumContours);
-
-            // TODO (Bonus): Comment out above if you are using the transfer function
-            // and comment in below instead
-            // util::hide(propIsoValue, propIsoColor);
-            // util::show(propNumContours, propIsoTransferFunc);
+            util::hide(propIsoValue, propIsoColor);
+            util::show(propNumContours, propIsoTransferFunc);
         }
     });
 }
@@ -192,23 +187,23 @@ void MarchingSquares::process() {
 
         // Draw vertical grid lines
         float step = bBoxMin.x;
-        for (size_t i = 0; i < grid.getNumVerticesPerDim().x; i++) {
+        for (size_t i = 0; i < nVertPerDim.x; i++) {
             vec2 v1 = vec2(step, bBoxMin.y);
             vec2 v2 = vec2(step, bBoxMax.y);
             drawLineSegment(v1, v2, propGridColor.get(), indexBufferGrid.get(), gridvertices);
 
-            step += grid.getCellSize().x;
+            step += cellSize.x;
         }
 
         // Draw horizontal grid lines
         step = bBoxMin.y;
-        for (size_t i = 0; i < grid.getNumVerticesPerDim().y; i++) {
+        for (size_t i = 0; i < nVertPerDim.y; i++) {
             // Draw a line segment from v1 to v2 with a the given color for the grid
             vec2 v1 = vec2(bBoxMin.x, step);
             vec2 v2 = vec2(bBoxMax.x, step);
             drawLineSegment(v1, v2, propGridColor.get(), indexBufferGrid.get(), gridvertices);
 
-            step += grid.getCellSize().y;
+            step += cellSize.y;
         }
 
         // ** TASK 3.1.A END **
@@ -232,161 +227,28 @@ void MarchingSquares::process() {
     std::vector<BasicMesh::Vertex> vertices;
 
     if (propMultiple.get() == 0) {
+        auto indexBufferIso = mesh->addIndexBuffer(DrawType::Lines, ConnectivityType::None);
+        drawIsoContour(grid, propIsoValue.get(), propIsoColor.get(), indexBufferIso.get(), vertices);
 
-        // ** TASK 3.1.B BEGIN **
-
-        auto indexBufferIso = gridmesh->addIndexBuffer(DrawType::Lines, ConnectivityType::None);
-
-        int cellCountX = grid.getNumVerticesPerDim().x - 1;
-        int cellCountY = grid.getNumVerticesPerDim().y - 1;
-
-        // March through all grid cells
-        for (size_t i = 0; i < cellCountX; i++) {
-            for (size_t j = 0; j < cellCountY; j++) {
-                // Get values from grid points surrounding this cell
-                auto f00 = grid.getValueAtVertex({i, j});
-                auto f10 = grid.getValueAtVertex({i + 1, j});
-                auto f01 = grid.getValueAtVertex({i, j + 1});
-                auto f11 = grid.getValueAtVertex({i + 1, j + 1});
-
-                // Mark vertices with true for above the isovalue and false for below the isovalue
-                bool b00 = f00 >= propIsoValue;
-                bool b10 = f10 >= propIsoValue;
-                bool b01 = f01 >= propIsoValue;
-                bool b11 = f11 >= propIsoValue;
-
-                // Disregard this cell if all values have the same signal
-                if (b00 == b10 && b01 == b11 && b00 == b11) continue;
-
-                // Otherwise, proceed with finding the intersection points
-                int intersectionCount = 0;
-                vec2 intersections[4];
-
-                // We will need coordinates for each grid point
-                vec2 v00 = grid.getPositionAtVertex({i, j});
-                vec2 v10 = grid.getPositionAtVertex({i + 1, j});
-                vec2 v01 = grid.getPositionAtVertex({i, j + 1});
-                vec2 v11 = grid.getPositionAtVertex({i + 1, j + 1});
-
-                // We verify each line and add an intersection point whenever one is found
-                if (b00 != b10) {
-                    // We calculate the relative position along the line by dividing the slope at
-                    // the isovalue by the total slope of the line This value 't' will be in the
-                    // range [0-1]
-                    float t = (propIsoValue - f00) / (f10 - f00);
-
-                    // Then we interpolate between the coordinates of the two points using 't'
-                    // (Note: interpolating in the Y axis here is redundant since both points are in
-                    // the same Y coordinate)
-                    intersections[intersectionCount].x = ((1 - t) * v00.x) + (t * v10.x);
-                    intersections[intersectionCount].y = v00.y;
-
-                    // Increment the intersection count
-                    intersectionCount++;
-                }
-                // The same snippet is repeated for the second line...
-                if (b01 != b11) {
-                    float t = (propIsoValue - f01) / (f11 - f01);
-                    intersections[intersectionCount].x = ((1 - t) * v01.x) + (t * v11.x);
-                    intersections[intersectionCount].y = v01.y;
-                    intersectionCount++;
-                }
-                // ...and the third line...
-                if (b00 != b01) {
-                    float t = (propIsoValue - f00) / (f01 - f00);
-                    intersections[intersectionCount].x = v00.x;
-                    intersections[intersectionCount].y = ((1 - t) * v00.y) + (t * v01.y);
-                    intersectionCount++;
-                }
-                // ...and the last line
-                if (b10 != b11) {
-                    float t = (propIsoValue - f10) / (f11 - f10);
-                    intersections[intersectionCount].x = v10.x;
-                    intersections[intersectionCount].y = ((1 - t) * v10.y) + (t * v11.y);
-                    intersectionCount++;
-                }
-
-                // Now we should have either 2 or 4 intersection points, if we have two then we can
-                // simply connect them
-                if (intersectionCount == 2) {
-                    drawLineSegment(intersections[0], intersections[1], propIsoColor.get(),
-                                    indexBufferIso.get(), gridvertices);
-                    continue;
-                }
-
-                // If we have 4 intersections, we need to run a decider
-                if (intersectionCount == 4) {
-                    switch (propDeciderType) {
-                        case 0: {
-                            // Asymptotic Decider
-                            // We will be using the "sort by axis" technique
-                            // Bubble sort on X axis coordinate
-                            bool isSorted = false;
-                            while (!isSorted) {
-                                isSorted = true;
-                                for (size_t k = 0; k < 3; k++) {
-                                    if (intersections[k].x > intersections[k + 1].x) {
-                                        isSorted = false;
-                                        vec2 v1 = intersections[k];
-                                        vec2 v2 = intersections[k + 1];
-                                        intersections[k] = v2;
-                                        intersections[k + 1] = v1;
-                                    }
-                                }
-                            }
-
-                            // Connect 0-1 and 2-3
-                            drawLineSegment(intersections[0], intersections[1], propIsoColor.get(),
-                                            indexBufferIso.get(), gridvertices);
-                            drawLineSegment(intersections[2], intersections[3], propIsoColor.get(),
-                                            indexBufferIso.get(), gridvertices);
-						} 
-						break;
-                            
-						case 1: {
-							// ** TASK 3.1.C BEGIN **
-
-							// Random decider 
-							// NOTE: Because of the order the lines are evaluated, we avoid the 0-1, 2-3 combination to prevent the lines
-							// from crossing each other
-							// Valid combinations are: 0-2, 1-3 and 0-3, 1-2
-							// We give it a 50/50 chance of either
-							
-							vec2 combo1 = {0, 2};     
-							vec2 combo2 = {1, 3};  
-
-							if (randomValue(0, 1) > 0.5f) {
-								combo1 = {0, 3};
-								combo2 = {1, 2};                    
-							}
-
-							// Connect lines
-                            drawLineSegment(intersections[(int)combo1.x], intersections[(int)combo1.y], propIsoColor.get(),
-                                            indexBufferIso.get(), gridvertices);
-                            drawLineSegment(intersections[(int)combo2.x], intersections[(int)combo2.y], propIsoColor.get(),
-                                            indexBufferIso.get(), gridvertices);
-
-							// ** TASK 3.1.C END **
-						} 
-						break;
-                    }
-                }
-            }
-        }
-        // ** TASK 3.1.B END **
     }
 
     else {
-        // TODO: Draw the given number (propNumContours) of isolines between
-        // the minimum and maximum value
+        // ** TASK 3.2 BEGIN **
+        int numContours = propNumContours.get();
+        double step = (maxValue - minValue) / (numContours+1);
 
-        // TODO (Bonus): Use the transfer function property to assign a color
-        // The transfer function normalizes the input data and sampling colors
-        // from the transfer function assumes normalized input, that means
-        // vec4 color = propIsoTransferFunc.get().sample(0.0f);
-        // is the color for the minimum value in the data
-        // vec4 color = propIsoTransferFunc.get().sample(1.0f);
-        // is the color for the maximum value in the data
+        // Draw the given number of isocontours between the minimum and maximum value
+        for (int i = 1; i <= numContours; i++) {
+            double isoValue = minValue + i * step;
+            LogProcessorInfo("Iso contour " << i << " value: " << isoValue);
+
+            // Use the transfer function property to assign a color to the isocontour
+            vec4 color = propIsoTransferFunc.get().sample((double)i / (numContours+1));
+
+            auto indexBufferIso = mesh->addIndexBuffer(DrawType::Lines, ConnectivityType::None);
+            drawIsoContour(grid, isoValue, color, indexBufferIso.get(), vertices);
+        }
+        // ** TASK 3.2 END **
     }
 
     gridmesh->addVertices(gridvertices);
@@ -401,6 +263,150 @@ void MarchingSquares::process() {
     mesh->addVertices(vertices);
     meshIsoOut.setData(mesh);
 }
+
+void MarchingSquares::drawIsoContour(const ScalarField2& grid, const double isoValue,
+                                     const vec4& color, IndexBufferRAM* indexBuffer,
+                                     std::vector<BasicMesh::Vertex>& vertices) {
+    // ** TASK 3.1.B BEGIN **
+    int cellCountX = grid.getNumVerticesPerDim().x - 1;
+    int cellCountY = grid.getNumVerticesPerDim().y - 1;
+
+    // March through all grid cells
+    for (size_t i = 0; i < cellCountX; i++) {
+        for (size_t j = 0; j < cellCountY; j++) {
+            // Get values from grid points surrounding this cell
+            auto f00 = grid.getValueAtVertex({i, j});
+            auto f10 = grid.getValueAtVertex({i + 1, j});
+            auto f01 = grid.getValueAtVertex({i, j + 1});
+            auto f11 = grid.getValueAtVertex({i + 1, j + 1});
+
+            // Mark vertices with true for above the isovalue and false for below the isovalue
+            bool b00 = f00 >= isoValue;
+            bool b10 = f10 >= isoValue;
+            bool b01 = f01 >= isoValue;
+            bool b11 = f11 >= isoValue;
+
+            // Disregard this cell if all values have the same signal
+            if (b00 == b10 && b01 == b11 && b00 == b11) continue;
+
+            // Otherwise, proceed with finding the intersection points
+            int intersectionCount = 0;
+            vec2 intersections[4];
+
+            // We will need coordinates for each grid point
+            vec2 v00 = grid.getPositionAtVertex({i, j});
+            vec2 v10 = grid.getPositionAtVertex({i + 1, j});
+            vec2 v01 = grid.getPositionAtVertex({i, j + 1});
+            vec2 v11 = grid.getPositionAtVertex({i + 1, j + 1});
+
+            // We verify each line and add an intersection point whenever one is found
+            if (b00 != b10) {
+                // We calculate the relative position along the line by dividing the slope at
+                // the isovalue by the total slope of the line This value 't' will be in the
+                // range [0-1]
+                float t = (isoValue - f00) / (f10 - f00);
+
+                // Then we interpolate between the coordinates of the two points using 't'
+                // (Note: interpolating in the Y axis here is redundant since both points are in
+                // the same Y coordinate)
+                intersections[intersectionCount].x = ((1 - t) * v00.x) + (t * v10.x);
+                intersections[intersectionCount].y = v00.y;
+
+                // Increment the intersection count
+                intersectionCount++;
+            }
+            // The same snippet is repeated for the second line...
+            if (b01 != b11) {
+                float t = (isoValue - f01) / (f11 - f01);
+                intersections[intersectionCount].x = ((1 - t) * v01.x) + (t * v11.x);
+                intersections[intersectionCount].y = v01.y;
+                intersectionCount++;
+            }
+            // ...and the third line...
+            if (b00 != b01) {
+                float t = (isoValue - f00) / (f01 - f00);
+                intersections[intersectionCount].x = v00.x;
+                intersections[intersectionCount].y = ((1 - t) * v00.y) + (t * v01.y);
+                intersectionCount++;
+            }
+            // ...and the last line
+            if (b10 != b11) {
+                float t = (isoValue - f10) / (f11 - f10);
+                intersections[intersectionCount].x = v10.x;
+                intersections[intersectionCount].y = ((1 - t) * v10.y) + (t * v11.y);
+                intersectionCount++;
+            }
+
+            // Now we should have either 2 or 4 intersection points, if we have two then we can
+            // simply connect them
+            if (intersectionCount == 2) {
+                drawLineSegment(intersections[0], intersections[1], color,
+                                indexBuffer, vertices);
+                continue;
+            }
+
+            // If we have 4 intersections, we need to run a decider
+            if (intersectionCount == 4) {
+                switch (propDeciderType) {
+                    case 0: {
+                        // Asymptotic Decider
+                        // We will be using the "sort by axis" technique
+                        // Bubble sort on X axis coordinate
+                        bool isSorted = false;
+                        while (!isSorted) {
+                            isSorted = true;
+                            for (size_t k = 0; k < 3; k++) {
+                                if (intersections[k].x > intersections[k + 1].x) {
+                                    isSorted = false;
+                                    vec2 v1 = intersections[k];
+                                    vec2 v2 = intersections[k + 1];
+                                    intersections[k] = v2;
+                                    intersections[k + 1] = v1;
+                                }
+                            }
+                        }
+
+                        // Connect 0-1 and 2-3
+                        drawLineSegment(intersections[0], intersections[1], color,
+                                        indexBuffer, vertices);
+                        drawLineSegment(intersections[2], intersections[3], color,
+                                        indexBuffer, vertices);
+                		}
+                		break;
+
+                		case 1: {
+                  			// ** TASK 3.1.C BEGIN **
+
+                  			// Random decider
+                  			// NOTE: Because of the order the lines are evaluated, we avoid the 0-1, 2-3 combination to prevent the lines
+                  			// from crossing each other
+                  			// Valid combinations are: 0-2, 1-3 and 0-3, 1-2
+                  			// We give it a 50/50 chance of either
+
+                  			vec2 combo1 = {0, 2};
+                  			vec2 combo2 = {1, 3};
+
+                  			if (randomValue(0, 1) > 0.5f) {
+                    				combo1 = {0, 3};
+                    				combo2 = {1, 2};
+                  			}
+
+                  			// Connect lines
+                        drawLineSegment(intersections[(int)combo1[0]],
+                                        intersections[(int)combo1[1]], color, indexBuffer, vertices);
+                        drawLineSegment(intersections[(int)combo2[0]],
+                                        intersections[(int)combo2[1]], color, indexBuffer, vertices);
+
+                  			// ** TASK 3.1.C END **
+                		}
+                		break;
+                }
+            }
+        }
+    }
+    // ** TASK 3.1.B END **
+}
+
 
 float MarchingSquares::randomValue(const float min, const float max) const {
     return min + uniformReal(randGenerator) * (max - min);
