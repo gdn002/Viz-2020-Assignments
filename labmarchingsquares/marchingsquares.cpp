@@ -40,7 +40,8 @@ MarchingSquares::MarchingSquares()
     , propIsoColor("isoColor", "Color", vec4(0.0f, 0.0f, 1.0f, 1.0f), vec4(0.0f), vec4(1.0f),
                    vec4(0.1f), InvalidationLevel::InvalidOutput, PropertySemantics::Color)
     , propNumContours("numContours", "Number of Contours", 1, 1, 50, 1)
-    , propIsoTransferFunc("isoTransferFunc", "Colors", &inData) {
+    , propIsoTransferFunc("isoTransferFunc", "Colors", &inData)
+    , propSmooth("applySmooth", "Apply Smooth") {
     // Register ports
     addPort(inData);
     addPort(meshIsoOut);
@@ -66,6 +67,7 @@ MarchingSquares::MarchingSquares()
     propMultiple.addOption("multiple", "Multiple", 1);
     addProperty(propNumContours);
     addProperty(propIsoTransferFunc);
+    addProperty(propSmooth);
 
     // The default transfer function has just two blue points
     propIsoTransferFunc.get().clear();
@@ -223,8 +225,51 @@ void MarchingSquares::process() {
     // and read again in the same way as before
     // smoothedField.getValueAtVertex(ij);
     // Initialize the output: mesh and vertices
+
+    ScalarField2 inputField = grid;
+    ScalarField2 smoothedField =  ScalarField2(nVertPerDim, bBoxMin, bBoxMax - bBoxMin);
+    //TASK 3.3 BEGIN
+    if (propSmooth.get()) {
+        float gauss [25] = {2,4,5,4,2,4,9,12,9,4,5,12,15,12,5,4,9,12,9,4,2,4,5,4,2};
+        ivec2 center = {2, 2};
+	float sum;
+	int k;
+	//for every vertex of the grid
+        for(; center.y<(nVertPerDim.y) - 2; (center.y)++){
+            for(; center.x<(nVertPerDim.x) - 2; (center.x)++){
+		//iterate over the filter
+		sum = 0.0f;
+		k=0;
+		for (int i=-2; i<3; i++){
+		    for (int j=-2; j<3; j++, k++){
+		        sum += grid.getValueAtVertex({(center.x)-j,(center.y)-i})*gauss[k];
+		    }
+		}
+		smoothedField.setValueAtVertex(center, sum/115);
+            }
+        }
+
+        
+        //void applyFilter(const ScalarField2& grid, const float &filter[25], ScalarField2& out, ivec2 center){
+        //	float sum = 0f;
+        //    for (int i=-2, k=0; i<3; i++){
+        //        for (int j=-2; j<3; j++, k++){
+        //            sum += grid.getValueAtVertex({(center.x)-i,(center.y)-j})*filter[k];
+        //    out.setValueAtVertex({i, j}, sum/115);
+        //}
+
+    }//TASK 3.3 END
+
+
     auto mesh = std::make_shared<BasicMesh>();
     std::vector<BasicMesh::Vertex> vertices;
+
+    if (propSmooth.get()) {
+        grid = smoothedField;
+    }
+    else{
+        grid = inputField;
+    }
 
     if (propMultiple.get() == 0) {
         auto indexBufferIso = mesh->addIndexBuffer(DrawType::Lines, ConnectivityType::None);

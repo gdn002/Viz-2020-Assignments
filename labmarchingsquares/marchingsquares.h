@@ -76,6 +76,9 @@ protected:
 
     float randomValue(const float min, const float max) const;
 
+    //void applyFilter(const ScalarField2& grid, const float &filter[25], ScalarField2& out, ivec2 center);
+    
+
     // Ports
 public:
     // Input data
@@ -101,6 +104,8 @@ public:
     // Properties for multiple iso contours
     IntProperty propNumContours;
     TransferFunctionProperty propIsoTransferFunc;
+    // Property to smooth the data
+    BoolProperty propSmooth;
 
     // Attributes
 private:
