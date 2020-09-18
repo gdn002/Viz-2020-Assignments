@@ -230,13 +230,17 @@ void MarchingSquares::process() {
     ScalarField2 smoothedField =  ScalarField2(nVertPerDim, bBoxMin, bBoxMax - bBoxMin);
     //TASK 3.3 BEGIN
     if (propSmooth.get()) {
-        float gauss [25] = {2,4,5,4,2,4,9,12,9,4,5,12,15,12,5,4,9,12,9,4,2,4,5,4,2};
+        float gauss [25] = { 2, 4, 5, 4, 2,
+							 4, 9,12, 9, 4,
+							 5,12,15,12, 5,
+							 4, 9,12, 9, 4,
+							 2, 4, 5, 4, 2};
         ivec2 center = {2, 2};
 	float sum;
 	int k;
 	//for every vertex of the grid
-        for(; center.y<(nVertPerDim.y) - 2; (center.y)++){
-            for(; center.x<(nVertPerDim.x) - 2; (center.x)++){
+        for (center.y = 2; center.y < (nVertPerDim.y) - 2; (center.y)++) {
+            for (center.x = 2; center.x < (nVertPerDim.x) - 2; (center.x)++) {
 		//iterate over the filter
 		sum = 0.0f;
 		k=0;
@@ -245,7 +249,7 @@ void MarchingSquares::process() {
 		        sum += grid.getValueAtVertex({(center.x)-j,(center.y)-i})*gauss[k];
 		    }
 		}
-		smoothedField.setValueAtVertex(center, sum/115);
+		smoothedField.setValueAtVertex(center, sum/159);
             }
         }
 
