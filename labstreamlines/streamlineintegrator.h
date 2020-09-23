@@ -75,6 +75,9 @@ protected:
     // (TODO: You could define some helper functions here,
     // e.g. a function creating a single streamline from one seed point)
 
+    //TASK 4.3 (a) returns a random point from the domain
+    vec2 getRandomPoint();
+
     // Ports
 public:
     // Input Vector Field
@@ -102,6 +105,8 @@ public:
     // IntVec2Property propertyName3;
     // TemplateOptionProperty<int> propertyName4;
     // BoolProperty propertyName4;
+
+    IntProperty propNumStreamLines;
 
     // Attributes
 private:
