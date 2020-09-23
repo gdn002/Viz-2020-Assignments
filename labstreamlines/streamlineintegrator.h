@@ -74,6 +74,7 @@ protected:
 
     // (TODO: You could define some helper functions here,
     // e.g. a function creating a single streamline from one seed point)
+    static void invertVectorField(VectorField2& vectorField);
 
     // Ports
 public:
@@ -95,13 +96,15 @@ public:
     IntProperty propNumStepsTaken;
     EventProperty mouseMoveStart;
 
-    // TODO: Declare additional properties
-    // Some types that you might need are given below
-    // IntProperty properyName;
-    // FloatProperty propertyName2;
-    // IntVec2Property propertyName3;
-    // TemplateOptionProperty<int> propertyName4;
-    // BoolProperty propertyName4;
+    // Declare additional properties
+    FloatVec4Property propLineColor;
+    BoolProperty propShowPoints;
+    BoolProperty propForwardDirection;
+    BoolProperty propNormalizedField;
+    IntProperty propNumberSteps;
+    FloatProperty propStepSize;
+    FloatProperty propMinimumVelocity;
+    FloatProperty propMaximumArcLength;
 
     // Attributes
 private:
