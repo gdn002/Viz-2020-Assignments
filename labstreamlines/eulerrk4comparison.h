@@ -81,6 +81,16 @@ public:
 public:
     FloatVec2Property propStartPoint;
 
+	FloatVec4Property propEulerColor;
+    BoolProperty propEulerShowPoints;
+    IntProperty propEulerNumberSteps;
+    FloatProperty propEulerStepSize;
+
+    FloatVec4Property propRK4Color;
+    BoolProperty propRK4ShowPoints;
+    IntProperty propRK4NumberSteps;
+    FloatProperty propRK4StepSize;
+
     EventProperty mouseMoveStart;
 
     // TODO: Declare additional properties
