@@ -32,16 +32,6 @@ EulerRK4Comparison::EulerRK4Comparison()
     , meshOut("meshOut")
     , meshBBoxOut("meshBBoxOut")
     , propStartPoint("startPoint", "Start Point", vec2(0.5, 0.5), vec2(0), vec2(1024), vec2(0.5))
-    , propEulerColor("eulerColor", "Euler Color", vec4(1.0f, 0.0f, 0.0f, 1.0f), vec4(0.0f), vec4(1.0f), 
-					vec4(0.1f), InvalidationLevel::InvalidOutput, PropertySemantics::Color)
-    , propEulerShowPoints("eulerShowPoints", "Show Euler Points")
-    , propEulerNumberSteps("eulerNumberSteps", "Euler Number of Steps", 10, 1, 500, 1)
-    , propEulerStepSize("eulerStepSize", "Euler Step Size", 1.0f, 0, 5.0f, 0.1f)
-    , propRK4Color("rk4Color", "RK4 Color", vec4(0.0f, 0.0f, 1.0f, 1.0f), vec4(0.0f), vec4(1.0f),
-					vec4(0.1f), InvalidationLevel::InvalidOutput, PropertySemantics::Color)
-    , propRK4ShowPoints("rk4ShowPoints", "Show RK4 Points")
-    , propRK4NumberSteps("rk4NumberSteps", "RK4 Number of Steps", 10, 1, 500, 1)
-    , propRK4StepSize("rk4StepSize", "RK4 Step Size", 1.0f, 0, 5.0f, 0.1f)
     , mouseMoveStart(
           "mouseMoveStart", "Move Start", [this](Event* e) { eventMoveStart(e); },
           MouseButton::Left, MouseState::Press | MouseState::Move)
@@ -57,17 +47,6 @@ EulerRK4Comparison::EulerRK4Comparison()
 
     // Register Properties
     addProperty(propStartPoint);
-
-    addProperty(propEulerColor);
-    addProperty(propEulerShowPoints);
-    addProperty(propEulerNumberSteps);
-    addProperty(propEulerStepSize);
-
-    addProperty(propRK4Color);
-    addProperty(propRK4ShowPoints);
-    addProperty(propRK4NumberSteps);
-    addProperty(propRK4StepSize);
-
     addProperty(mouseMoveStart);
 
     // TODO: Register additional properties
@@ -112,8 +91,6 @@ void EulerRK4Comparison::process() {
     auto indexBufferEuler = mesh->addIndexBuffer(DrawType::Lines, ConnectivityType::Strip);
     auto indexBufferRK = mesh->addIndexBuffer(DrawType::Lines, ConnectivityType::Strip);
     auto indexBufferPoints = mesh->addIndexBuffer(DrawType::Points, ConnectivityType::None);
-    auto indexBufferEulerPoints = mesh->addIndexBuffer(DrawType::Points, ConnectivityType::None);
-    auto indexBufferRKPoints = mesh->addIndexBuffer(DrawType::Points, ConnectivityType::None);
 
     auto bboxMesh = std::make_shared<BasicMesh>();
     std::vector<BasicMesh::Vertex> bboxVertices;
@@ -139,27 +116,12 @@ void EulerRK4Comparison::process() {
     dvec2 startPoint = propStartPoint.get();
     Integrator::drawPoint(startPoint, black, indexBufferPoints.get(), vertices);
 
-	// TASK 4.1 IMPLEMENTATION BEGIN
+    // TODO: Implement the Euler and Runge-Kutta of 4th order integration schemes
+    // and then integrate forward for a specified number of integration steps and a given stepsize
+    // (these should be additional properties of the processor)
 
-	// Run Euler integration
-    dvec2 current = startPoint;
-	for (int i = 0; i < propEulerNumberSteps.get(); i++) {
-        dvec2 next = Integrator::Euler(vectorField, current, propEulerStepSize.get());
-        Integrator::drawLineSegment(current, next, propEulerColor.get(), indexBufferEuler.get(), vertices);
-        if (propEulerShowPoints) Integrator::drawPoint(next, propEulerColor.get(), indexBufferEulerPoints.get(), vertices);
-        current = next;
-    }
-
-	// Run RK4 integration
-	current = startPoint;
-	for (int i = 0; i < propRK4NumberSteps.get(); i++) {
-        dvec2 next = Integrator::RK4(vectorField, current, propRK4StepSize.get());
-        Integrator::drawLineSegment(current, next, propRK4Color.get(), indexBufferRK.get(), vertices);
-        if (propRK4ShowPoints) Integrator::drawPoint(next, propRK4Color.get(), indexBufferRKPoints.get(), vertices);
-        current = next;
-    }
-
-	// TASK 4.1 IMPLEMENTATION END
+    // Integrator::Euler(vectorField, startPoint, ...);
+    // Integrator::Rk4(vectorField, dims, startPoint, ...);
 
     mesh->addVertices(vertices);
     meshOut.setData(mesh);
