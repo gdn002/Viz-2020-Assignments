@@ -201,18 +201,4 @@ void StreamlineIntegrator::process() {
     meshOut.setData(mesh);
 }  // namespace inviwo
 
-void StreamlineIntegrator::invertVectorField(VectorField2& vectorField) {
-    //VectorField2 invertedField = vectorField;
-    const ivec2 nVertPerDim = vectorField.getNumVerticesPerDim();
-
-    for (int i = 0; i < nVertPerDim.x; i++) {
-        for (int j = 0; j < nVertPerDim.y; j++) {
-            auto vector = vectorField.getValueAtVertex({i, j});
-            vectorField.setValueAtVertex({i, j}, -1 * vector);
-            //LogProcessorInfo("vectorDirection " << vector << " " << -1 * vector << " " << sqrt(16));
-        }
-    }
-    //return invertedField;
-}
-
 }  // namespace inviwo

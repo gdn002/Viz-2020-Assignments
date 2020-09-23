@@ -74,7 +74,6 @@ protected:
 
     // (TODO: You could define some helper functions here,
     // e.g. a function creating a single streamline from one seed point)
-    static void invertVectorField(VectorField2& vectorField);
 
     // Ports
 public:
