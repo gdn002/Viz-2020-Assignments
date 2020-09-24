@@ -76,11 +76,11 @@ protected:
     // e.g. a function creating a single streamline from one seed point)
 
     //TASK 4.3 (a) returns a random point from the domain
-    vec2 getRandomPoint();
-    int drawStreamLine(dvec2 startPoint, double stepSize, int steps,
-                   const VectorField2& vectorField,
-                   IndexBufferRAM* indexBufferLine,
-                   std::vector<BasicMesh::Vertex>& vertices);
+    vec2 getRandomPoint(vec2 min, vec2 max);
+	  void EulerLoop(const VectorField2& vectorField, const dvec2& start, std::shared_ptr<inviwo::BasicMesh>& mesh, std::vector<BasicMesh::Vertex>& vertices, bool inverted = false);
+	  bool Euler(const VectorField2& vectorField, const dvec2& start, dvec2& end, double& arcLength, bool inverted = false);
+
+	  dvec2 GetNextStartingPoint();
 
     // Ports
 public:
@@ -106,6 +106,7 @@ public:
     FloatVec4Property propLineColor;
     BoolProperty propShowPoints;
     BoolProperty propForwardDirection;
+    BoolProperty propBackwardDirection;
     BoolProperty propNormalizedField;
     IntProperty propNumberSteps;
     FloatProperty propStepSize;
