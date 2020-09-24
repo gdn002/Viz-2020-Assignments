@@ -28,7 +28,6 @@ const ProcessorInfo StreamlineIntegrator::processorInfo_{
     Tags::None,                         // Tags
 };
 
-
 const ProcessorInfo StreamlineIntegrator::getProcessorInfo() const { return processorInfo_; }
 
 StreamlineIntegrator::StreamlineIntegrator()
@@ -36,27 +35,32 @@ StreamlineIntegrator::StreamlineIntegrator()
     , inData("volIn")
     , meshOut("meshOut")
     , meshBBoxOut("meshBBoxOut")
-    , propStartPoint("startPoint", "Start Point", vec2(0.5f, 0.5f), vec2(-1.f), vec2(1.f), vec2(0.1))
+    , propStartPoint("startPoint", "Start Point", vec2(0.5f, 0.5f), vec2(-1.f), vec2(1.f),
+                     vec2(0.1))
     , propSeedMode("seedMode", "Seeds")
     , propNumStepsTaken("numstepstaken", "Number of actual steps", 0, 0, 100000)
-    , propLineColor("lineColor", "Stream Line Color", vec4(1.0f, 0.0f, 0.0f, 1.0f), vec4(0.0f), vec4(1.0f),
-					vec4(0.1f), InvalidationLevel::InvalidOutput, PropertySemantics::Color)
+    , propEulerColor("eulerColor", "Euler Stream Line Color", vec4(1.0f, 0.0f, 0.0f, 1.0f),
+                     vec4(0.0f), vec4(1.0f), vec4(0.1f), InvalidationLevel::InvalidOutput,
+                     PropertySemantics::Color)
+    , propRK4Color("rk4Color", "RK4 Stream Line Color", vec4(0.0f, 0.0f, 1.0f, 1.0f), vec4(0.0f),
+                   vec4(1.0f), vec4(0.1f), InvalidationLevel::InvalidOutput,
+                   PropertySemantics::Color)
     , propShowPoints("showPoints", "Show Points")
     , propNumberSteps("numberSteps", "Number of Steps", 5, 1, 50, 1)
     , propStepSize("stepSize", "Step Size", 1.0f, 0, 5.0f, 0.1f)
-    , propForwardDirection("forwardDirection", "Forward Direction", true) 
-	, propBackwardDirection("backwardDirection", "Backward Direction", false)
+    , propForwardDirection("forwardDirection", "Forward Direction", true)
+    , propBackwardDirection("backwardDirection", "Backward Direction", false)
     , propNormalizedField("normalizedField", "Normalized Vector Field")
     , propMinimumVelocity("minimumVelocity", "Minimum Velocity", 0.1f, 0, 5, 0.1f)
-    , propMaximumArcLength("maximumArcLength", "Maximum Arc Length", 5, 0, 10, 0.5f)
-    , mouseMoveStart("mouseMoveStart", "Move Start", [this](Event* e) { eventMoveStart(e); },
-                     MouseButton::Left, MouseState::Press | MouseState::Move)
-// TODO: Initialize additional properties
-// propertyName("propertyIdentifier", "Display Name of the Propery",
-// default value (optional), minimum value (optional), maximum value (optional),
-// increment (optional)); propertyIdentifier cannot have spaces
-    , propNumStreamLines("numStreamLines", "Stream Lines", 1, 0, 10, 1)
-{
+    , propMaximumArcLength("maximumArcLength", "Maximum Arc Length", 5, 0, 20, 0.5f)
+    , mouseMoveStart(
+          "mouseMoveStart", "Move Start", [this](Event* e) { eventMoveStart(e); },
+          MouseButton::Left, MouseState::Press | MouseState::Move)
+    // TODO: Initialize additional properties
+    // propertyName("propertyIdentifier", "Display Name of the Propery",
+    // default value (optional), minimum value (optional), maximum value (optional),
+    // increment (optional)); propertyIdentifier cannot have spaces
+    , propNumStreamLines("numStreamLines", "Stream Lines", 1, 0, 10, 1) {
     // Register Ports
     addPort(inData);
     addPort(meshOut);
@@ -74,7 +78,8 @@ StreamlineIntegrator::StreamlineIntegrator()
     addProperty(propNumStreamLines);
 
     // Register additional properties
-    addProperty(propLineColor);
+    addProperty(propEulerColor);
+    addProperty(propRK4Color);
     addProperty(propShowPoints);
     addProperty(propNumberSteps);
     addProperty(propStepSize);
@@ -97,20 +102,23 @@ StreamlineIntegrator::StreamlineIntegrator()
     });
 }
 
-//TASK 4.x FUNCTIONS IMPLEMENTATION START
-vec2 StreamlineIntegrator::getRandomPoint(vec2 min, vec2 max){
-  float r;
-  vec2 point;
-  for(int i=0; i<2; i++){
-    r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);  //random between 0.0 and 1.0
-    r = r*(max[i]-min[i])+min[i]; 
-    point[i] = r;
-  }
-  return point;
+// TASK 4.x FUNCTIONS IMPLEMENTATION START
+vec2 StreamlineIntegrator::getRandomPoint(vec2 min, vec2 max) {
+    float r;
+    vec2 point;
+    for (int i = 0; i < 2; i++) {
+        r = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);  // random between 0.0
+                                                                        // and 1.0
+        r = r * (max[i] - min[i]) + min[i];
+        point[i] = r;
+    }
+    return point;
 }
 
-/*int drawStreamLine(dvec2 startPoint, double stepSize, int nSteps, float minVel, bool forward, bool normalize, const VectorField2& vectorField, IndexBufferRAM* indexBufferLine, std::vector<BasicMesh::Vertex>& vertices){
-                                   
+/*int drawStreamLine(dvec2 startPoint, double stepSize, int nSteps, float minVel, bool forward, bool
+normalize, const VectorField2& vectorField, IndexBufferRAM* indexBufferLine,
+std::vector<BasicMesh::Vertex>& vertices){
+                                   
     dvec2 BBoxMin_ = vectorField.getBBoxMin();
     dvec2 BBoxMax_ = vectorField.getBBoxMax();
     dvec2 current = startPoint;
@@ -150,13 +158,13 @@ vec2 StreamlineIntegrator::getRandomPoint(vec2 min, vec2 max){
             break;
         }
 
-        Integrator::drawLineSegment(current, next, propLineColor.get(), indexBufferLine.get(), vertices);
-        if (propShowPoints.get()) Integrator::drawPoint(next, propLineColor.get(), indexBufferPoints.get(), vertices);
-        current = next;
+        Integrator::drawLineSegment(current, next, propLineColor.get(), indexBufferLine.get(),
+vertices); if (propShowPoints.get()) Integrator::drawPoint(next, propLineColor.get(),
+indexBufferPoints.get(), vertices); current = next;
     }
     return num_steps;
 }*/
-//TASK 4.x FUNCTIONS IMPLEMENTATION END
+// TASK 4.x FUNCTIONS IMPLEMENTATION END
 
 void StreamlineIntegrator::eventMoveStart(Event* event) {
     if (!inData.hasData()) return;
@@ -214,10 +222,17 @@ void StreamlineIntegrator::process() {
     int steps = propNumberSteps.get();
     bool inverted = propBackwardDirection.get();
     if (propSeedMode.get() == 0) {
-        
-		    dvec2 startingPoint = GetNextStartingPoint();
 
-		    EulerLoop(vectorField, startingPoint, mesh, vertices, inverted);
+        dvec2 startingPoint = propStartPoint.get();
+
+        if (propForwardDirection.get()) {
+            EulerLoop(vectorField, startingPoint, mesh, vertices);
+            RK4Loop(vectorField, startingPoint, mesh, vertices);
+		}
+        if (propBackwardDirection.get()) {
+            EulerLoop(vectorField, startingPoint, mesh, vertices, true);
+            RK4Loop(vectorField, startingPoint, mesh, vertices, true);
+        }
 
     } else {
         // TODO: Seed multiple stream lines either randomly or using a uniform grid
@@ -225,12 +240,12 @@ void StreamlineIntegrator::process() {
         // TASK 4.3 IMPLEMENTATION BEGIN
 
         // Draw start point
-     
+
         auto indexBufferPoints = mesh->addIndexBuffer(DrawType::Points, ConnectivityType::None);
         vec2 point;
-        for(int i=0; i<propNumStreamLines.get(); i++){
-          point = getRandomPoint(BBoxMin_, BBoxMax_);
-		      EulerLoop(vectorField, point, mesh, vertices, inverted);
+        for (int i = 0; i < propNumStreamLines.get(); i++) {
+            point = getRandomPoint(BBoxMin_, BBoxMax_);
+            EulerLoop(vectorField, point, mesh, vertices, inverted);
         }
         // TASK 4.3 IMPLEMENTATION END
     }
@@ -239,11 +254,13 @@ void StreamlineIntegrator::process() {
     meshOut.setData(mesh);
 }  // process
 
-void inviwo::StreamlineIntegrator::EulerLoop(const VectorField2& vectorField, 
-											 const dvec2& start,
+void inviwo::StreamlineIntegrator::EulerLoop(const VectorField2& vectorField, const dvec2& start,
                                              std::shared_ptr<inviwo::BasicMesh>& mesh,
                                              std::vector<BasicMesh::Vertex>& vertices,
                                              bool inverted) {
+    // Bypass entire function if the Euler color alpha is zero
+    if (propEulerColor.get().a == 0) return;
+
     auto indexBufferPoints = mesh->addIndexBuffer(DrawType::Points, ConnectivityType::None);
     auto indexBufferLine = mesh->addIndexBuffer(DrawType::Lines, ConnectivityType::Strip);
     // Draw start point
@@ -258,10 +275,10 @@ void inviwo::StreamlineIntegrator::EulerLoop(const VectorField2& vectorField,
         dvec2 next;
         if (!Euler(vectorField, current, next, arcLength, inverted)) break;
 
-        Integrator::drawLineSegment(current, next, propLineColor.get(), indexBufferLine.get(),
+        Integrator::drawLineSegment(current, next, propEulerColor.get(), indexBufferLine.get(),
                                     vertices);
         if (propShowPoints.get())
-            Integrator::drawPoint(next, propLineColor.get(), indexBufferPoints.get(), vertices);
+            Integrator::drawPoint(next, propEulerColor.get(), indexBufferPoints.get(), vertices);
         current = next;
     }
 
@@ -271,13 +288,14 @@ void inviwo::StreamlineIntegrator::EulerLoop(const VectorField2& vectorField,
     propNumStepsTaken.set(num_steps);
 }
 
-bool inviwo::StreamlineIntegrator::Euler(const VectorField2& vectorField, const dvec2& start, dvec2& end, double& arcLength, bool inverted) {
+bool inviwo::StreamlineIntegrator::Euler(const VectorField2& vectorField, const dvec2& start,
+                                         dvec2& end, double& arcLength, bool inverted) {
 
-	// Interpolate vector field from our current point
+    // Interpolate vector field from our current point
     dvec2 vecValue = vectorField.interpolate(start);
 
     // Compute the euclidean norm and stop integration on very low / zero velocity
-    double vecNorm = sqrt(pow(vecValue.x, 2) + pow(vecValue.y, 2));
+    double vecNorm = Magnitude(vecValue);
     if (vecNorm == 0) {
         LogProcessorInfo("Stopping integration due to zeros in the vector field.");
         return false;
@@ -308,9 +326,102 @@ bool inviwo::StreamlineIntegrator::Euler(const VectorField2& vectorField, const 
     return true;
 }
 
-dvec2 inviwo::StreamlineIntegrator::GetNextStartingPoint() { 
-	// This function should handle multiple seeded points
-	return propStartPoint.get(); 
+void inviwo::StreamlineIntegrator::RK4Loop(const VectorField2& vectorField, const dvec2& start,
+                                           std::shared_ptr<inviwo::BasicMesh>& mesh,
+                                           std::vector<BasicMesh::Vertex>& vertices,
+                                           bool inverted) {
+    // Bypass entire function if the RK4 color alpha is zero
+    if (propRK4Color.get().a == 0) return;
+
+    auto indexBufferPoints = mesh->addIndexBuffer(DrawType::Points, ConnectivityType::None);
+    auto indexBufferLine = mesh->addIndexBuffer(DrawType::Lines, ConnectivityType::Strip);
+    // Draw start point
+    Integrator::drawPoint(start, vec4(0, 0, 0, 1), indexBufferPoints.get(), vertices);
+
+    // Create one stream line from the given start point
+    dvec2 current = start;
+    double arcLength = 0;
+    int num_steps;
+    for (num_steps = 0; num_steps < propNumberSteps.get(); num_steps++) {
+
+        dvec2 next;
+        if (!RK4(vectorField, current, next, arcLength, inverted)) break;
+
+        Integrator::drawLineSegment(current, next, propRK4Color.get(), indexBufferLine.get(),
+                                    vertices);
+        if (propShowPoints.get())
+            Integrator::drawPoint(next, propRK4Color.get(), indexBufferPoints.get(), vertices);
+        current = next;
+    }
+
+    // Use the propNumStepsTaken property to show how many steps have actually been
+    // integrated This could be different from the desired number of steps due to stopping
+    // conditions (too slow, boundary, ...)
+    propNumStepsTaken.set(num_steps);
+}
+
+bool inviwo::StreamlineIntegrator::RK4(const VectorField2& vectorField, const dvec2& start,
+                                       dvec2& end, double& arcLength, bool inverted) {
+    double stepSize = propStepSize.get();
+
+    // Obtain the four intermediate points
+    dvec2 v1 = vectorField.interpolate(start);
+    dvec2 v2 = vectorField.interpolate(start + (v1 * (stepSize / 2)));
+    dvec2 v3 = vectorField.interpolate(start + (v2 * (stepSize / 2)));
+    dvec2 v4 = vectorField.interpolate(start + (v3 * stepSize));
+
+    if (Magnitude(v1) == 0) {
+        LogProcessorInfo("Stopping integration due to zeros in the vector field.");
+        return false;
+    }
+
+    // Invert the direction of the vectors
+    if (inverted) {
+        v1 *= -1;
+        v2 *= -1;
+        v3 *= -1;
+        v4 *= -1;
+    }
+
+    // Obtain normalized vectors
+    if (propNormalizedField.get()) {
+        v1 /= Magnitude(v1);
+        v2 /= Magnitude(v2);
+        v3 /= Magnitude(v3);
+        v4 /= Magnitude(v4);
+    }
+
+    // Divide the intermediate points according to the RK4 formula
+    v1 /= 6;
+    v2 /= 3;
+    v3 /= 3;
+    v4 /= 6;
+
+    // Obtain final vector
+    dvec2 vecValue = v1 + v2 + v3 + v4;
+    double vecNorm = Magnitude(vecValue);
+    if (vecNorm < propMinimumVelocity.get()) {
+        LogProcessorInfo("Stopping integration due to slow velocity.");
+        return false;
+    }
+
+    // Keep track of the accumulating arc length
+    arcLength += vecNorm;
+    end = start + (stepSize * vecValue);
+
+    if (end.x < BBoxMin_.x || end.x > BBoxMax_.x || end.y < BBoxMin_.y || end.y > BBoxMax_.y) {
+        LogProcessorInfo("Stopping integration at the domain's boundary.");
+        return false;
+    } else if (arcLength > propMaximumArcLength.get()) {
+        LogProcessorInfo("Stopping integration due to exceeded arc length.");
+        return false;
+    }
+
+    return true;
+}
+
+double inviwo::StreamlineIntegrator::Magnitude(const dvec2& vec) {
+    return sqrt(pow(vec.x, 2) + pow(vec.y, 2));
 }
 
 }  // namespace inviwo
