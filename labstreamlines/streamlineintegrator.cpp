@@ -60,6 +60,7 @@ StreamlineIntegrator::StreamlineIntegrator()
     // propertyName("propertyIdentifier", "Display Name of the Propery",
     // default value (optional), minimum value (optional), maximum value (optional),
     // increment (optional)); propertyIdentifier cannot have spaces
+    , propRandom("random", "Random Placement", true)
     , propNumStreamLines("numStreamLines", "Stream Lines", 1, 0, 100, 1)
     , propGridPointX("gridPointX", "X", 1, 0, 100, 1)
     , propGridPointY("gridPointY", "Y", 1, 0, 100, 1) {
@@ -71,17 +72,13 @@ StreamlineIntegrator::StreamlineIntegrator()
 
     // Register Properties
     propSeedMode.addOption("one", "Single Start Point", 0);
-    propSeedMode.addOption("random", "Random Seeds", 1);
-    propSeedMode.addOption("grid", "Uniform Grid", 2);
+    propSeedMode.addOption("multiple", "Multiple Seeds", 1);
     addProperty(propSeedMode);
     addProperty(propStartPoint);
     addProperty(propNumStepsTaken);
     propNumStepsTaken.setReadOnly(true);
     propNumStepsTaken.setSemantics(PropertySemantics::Text);
     addProperty(mouseMoveStart);
-    addProperty(propNumStreamLines);
-    addProperty(propGridPointX);
-    addProperty(propGridPointY);
 
     // Register additional properties
     addProperty(propEulerColor);
@@ -94,24 +91,19 @@ StreamlineIntegrator::StreamlineIntegrator()
     addProperty(propNormalizedField);
     addProperty(propMinimumVelocity);
     addProperty(propMaximumArcLength);
+    addProperty(propRandom);
+    addProperty(propNumStreamLines);
+    addProperty(propGridPointX);
+    addProperty(propGridPointY);
 
     // Show properties for a single seed and hide properties for multiple seeds
     propSeedMode.onChange([this]() {
-        switch (propSeedMode.get()) {
-          case 0:
+        if (propSeedMode.get() == 0) {
             util::show(propStartPoint, mouseMoveStart, propNumStepsTaken);
-            util::hide(propNumStreamLines);
-            util::hide(propGridPointX, propGridPointY);
-            break;
-          case 1:
+            util::hide(propRandom, propNumStreamLines, propGridPointX, propGridPointY);
+        } else {
             util::hide(propStartPoint, mouseMoveStart, propNumStepsTaken);
-            util::show(propNumStreamLines);
-            util::hide(propGridPointX, propGridPointY);
-            break;
-          case 2:
-            util::hide(propStartPoint, mouseMoveStart, propNumStepsTaken);
-            util::hide(propNumStreamLines);
-            util::show(propGridPointX, propGridPointY);
+            util::show(propRandom, propNumStreamLines, propGridPointX, propGridPointY);
         }
     });
 }
@@ -187,33 +179,50 @@ void StreamlineIntegrator::process() {
     int steps = propNumberSteps.get();
     dvec2 startingPoint = propStartPoint.get();
     vec2 point;
-        switch (propSeedMode.get()) {
-          case 0:
+    if (propSeedMode.get() == 0) {
+      if (propForwardDirection.get()) {
+          EulerLoop(vectorField, startingPoint, mesh, vertices);
+          RK4Loop(vectorField, startingPoint, mesh, vertices);
+      }
+      if (propBackwardDirection.get()) {
+          EulerLoop(vectorField, startingPoint, mesh, vertices, true);
+          RK4Loop(vectorField, startingPoint, mesh, vertices, true);
+      }
+    } // TASK 4.3 IMPLEMENTATION BEGIN
+    else{
+      if(propRandom.get()){
+        for (int i = 0; i < propNumStreamLines.get(); i++) {
+            point = getRandomPoint(BBoxMin_, BBoxMax_);
             if (propForwardDirection.get()) {
-                EulerLoop(vectorField, startingPoint, mesh, vertices);
-                RK4Loop(vectorField, startingPoint, mesh, vertices);
+              EulerLoop(vectorField, point, mesh, vertices);
+              RK4Loop(vectorField, point, mesh, vertices);
             }
             if (propBackwardDirection.get()) {
-                EulerLoop(vectorField, startingPoint, mesh, vertices, true);
-                RK4Loop(vectorField, startingPoint, mesh, vertices, true);
+              EulerLoop(vectorField, point, mesh, vertices, true);
+              RK4Loop(vectorField, point, mesh, vertices, true);
             }
-            break;
-          // TASK 4.3 IMPLEMENTATION BEGIN
-          case 1:
-            for (int i = 0; i < propNumStreamLines.get(); i++) {
-                point = getRandomPoint(BBoxMin_, BBoxMax_);
-                if (propForwardDirection.get()) {
-                  EulerLoop(vectorField, point, mesh, vertices);
-                  RK4Loop(vectorField, point, mesh, vertices);
-                }
-                if (propBackwardDirection.get()) {
-                  EulerLoop(vectorField, point, mesh, vertices, true);
-                  RK4Loop(vectorField, point, mesh, vertices, true);
-                }
-            }
-            break;
-          // TASK 4.3 IMPLEMENTATION END
         }
+      }
+      else{
+        int nX = propGridPointX.get();
+        int nY = propGridPointY.get();
+        float unitX = (BBoxMax_.x - BBoxMin_.x)/nX;
+        float unitY = (BBoxMax_.y - BBoxMin_.y)/nY;
+        for (int j = BBoxMin_.y; j<BBoxMax_.y; j+= unitY){
+          for(int i = BBoxMin_.x; i<BBoxMax_.x; i+= unitX){
+            point = {i,j};
+            if (propForwardDirection.get()) {
+              EulerLoop(vectorField, point, mesh, vertices);
+              RK4Loop(vectorField, point, mesh, vertices);
+            }
+            if (propBackwardDirection.get()) {
+              EulerLoop(vectorField, point, mesh, vertices, true);
+              RK4Loop(vectorField, point, mesh, vertices, true);
+            }
+          }
+        }
+      }
+    } // TASK 4.3 IMPLEMENTATION END
 
     mesh->addVertices(vertices);
     meshOut.setData(mesh);

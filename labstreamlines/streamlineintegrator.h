@@ -124,6 +124,7 @@ public:
     FloatProperty propMinimumVelocity;
     FloatProperty propMaximumArcLength;
 
+    BoolProperty propRandom;
     IntProperty propNumStreamLines;
     IntProperty propGridPointX;
     IntProperty propGridPointY;
