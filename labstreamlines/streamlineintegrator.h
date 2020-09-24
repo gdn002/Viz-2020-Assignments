@@ -77,6 +77,7 @@ protected:
 
     //TASK 4.3 (a) returns a random point from the domain
     vec2 getRandomPoint(vec2 min, vec2 max);
+
     void EulerLoop(const VectorField2& vectorField, const dvec2& start,
                    std::shared_ptr<inviwo::BasicMesh>& mesh,
                    std::vector<BasicMesh::Vertex>& vertices, bool inverted = false);
@@ -124,6 +125,8 @@ public:
     FloatProperty propMaximumArcLength;
 
     IntProperty propNumStreamLines;
+    IntProperty propGridPointX;
+    IntProperty propGridPointY;
 
     // Attributes
 private:

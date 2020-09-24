@@ -60,7 +60,10 @@ StreamlineIntegrator::StreamlineIntegrator()
     // propertyName("propertyIdentifier", "Display Name of the Propery",
     // default value (optional), minimum value (optional), maximum value (optional),
     // increment (optional)); propertyIdentifier cannot have spaces
-    , propNumStreamLines("numStreamLines", "Stream Lines", 1, 0, 10, 1) {
+    , propNumStreamLines("numStreamLines", "Stream Lines", 1, 0, 100, 1)
+    , propGridPointX("gridPointX", "X", 1, 0, 100, 1)
+    , propGridPointY("gridPointY", "Y", 1, 0, 100, 1) {
+    
     // Register Ports
     addPort(inData);
     addPort(meshOut);
@@ -68,7 +71,8 @@ StreamlineIntegrator::StreamlineIntegrator()
 
     // Register Properties
     propSeedMode.addOption("one", "Single Start Point", 0);
-    propSeedMode.addOption("multiple", "Multiple Seeds", 1);
+    propSeedMode.addOption("random", "Random Seeds", 1);
+    propSeedMode.addOption("grid", "Uniform Grid", 2);
     addProperty(propSeedMode);
     addProperty(propStartPoint);
     addProperty(propNumStepsTaken);
@@ -76,6 +80,8 @@ StreamlineIntegrator::StreamlineIntegrator()
     propNumStepsTaken.setSemantics(PropertySemantics::Text);
     addProperty(mouseMoveStart);
     addProperty(propNumStreamLines);
+    addProperty(propGridPointX);
+    addProperty(propGridPointY);
 
     // Register additional properties
     addProperty(propEulerColor);
@@ -90,14 +96,22 @@ StreamlineIntegrator::StreamlineIntegrator()
     addProperty(propMaximumArcLength);
 
     // Show properties for a single seed and hide properties for multiple seeds
-    // (TODO)
     propSeedMode.onChange([this]() {
-        if (propSeedMode.get() == 0) {
+        switch (propSeedMode.get()) {
+          case 0:
             util::show(propStartPoint, mouseMoveStart, propNumStepsTaken);
             util::hide(propNumStreamLines);
-        } else {
+            util::hide(propGridPointX, propGridPointY);
+            break;
+          case 1:
             util::hide(propStartPoint, mouseMoveStart, propNumStepsTaken);
             util::show(propNumStreamLines);
+            util::hide(propGridPointX, propGridPointY);
+            break;
+          case 2:
+            util::hide(propStartPoint, mouseMoveStart, propNumStepsTaken);
+            util::hide(propNumStreamLines);
+            util::show(propGridPointX, propGridPointY);
         }
     });
 }
@@ -115,55 +129,6 @@ vec2 StreamlineIntegrator::getRandomPoint(vec2 min, vec2 max) {
     return point;
 }
 
-/*int drawStreamLine(dvec2 startPoint, double stepSize, int nSteps, float minVel, bool forward, bool
-normalize, const VectorField2& vectorField, IndexBufferRAM* indexBufferLine,
-std::vector<BasicMesh::Vertex>& vertices){
-                                   
-    dvec2 BBoxMin_ = vectorField.getBBoxMin();
-    dvec2 BBoxMax_ = vectorField.getBBoxMax();
-    dvec2 current = startPoint;
-    double arcLength = 0;
-    int num_steps;
-    for (num_steps = 0; num_steps < nSteps; num_steps++) {
-        // Interpolate vector field from our current point
-        dvec2 vecValue = vectorField.interpolate(current);
-
-        // Compute the euclidean norm and stop integration on very low / zero velocity
-        double vecNorm = sqrt(pow(vecValue.x, 2) + pow(vecValue.y, 2));
-        if (vecNorm == 0) {
-            //LogProcessorInfo("Stopping integration due to zeros in the vector field.");
-            break;
-        } else if (vecNorm < minVel) {
-            //LogProcessorInfo("Stopping integration due to slow velocity.");
-            break;
-        }
-        // Invert the direction of the vector
-        if (!forward) vecValue *= -1;
-
-        // obtain the normalized vector field
-        if (normalize) {
-            vecValue /= vecNorm;
-            vecNorm = 1.0;
-        }
-        // Keep track of the accumulating arc length
-        arcLength += vecNorm;
-        dvec2 next = current + stepSize * vecValue;
-
-        if (next.x < BBoxMin_.x || next.x > BBoxMax_.x ||
-            next.y < BBoxMin_.y || next.y > BBoxMax_.y) {
-            //LogProcessorInfo("Stopping integration at the domain's boundary.");
-            break;
-        } else if (arcLength > propMaximumArcLength.get()) {
-            //LogProcessorInfo("Stopping integration due to exceeded arc length.");
-            break;
-        }
-
-        Integrator::drawLineSegment(current, next, propLineColor.get(), indexBufferLine.get(),
-vertices); if (propShowPoints.get()) Integrator::drawPoint(next, propLineColor.get(),
-indexBufferPoints.get(), vertices); current = next;
-    }
-    return num_steps;
-}*/
 // TASK 4.x FUNCTIONS IMPLEMENTATION END
 
 void StreamlineIntegrator::eventMoveStart(Event* event) {
@@ -220,35 +185,35 @@ void StreamlineIntegrator::process() {
 
     double stepSize = propStepSize.get();
     int steps = propNumberSteps.get();
-    bool inverted = propBackwardDirection.get();
-    if (propSeedMode.get() == 0) {
-
-        dvec2 startingPoint = propStartPoint.get();
-
-        if (propForwardDirection.get()) {
-            EulerLoop(vectorField, startingPoint, mesh, vertices);
-            RK4Loop(vectorField, startingPoint, mesh, vertices);
-		}
-        if (propBackwardDirection.get()) {
-            EulerLoop(vectorField, startingPoint, mesh, vertices, true);
-            RK4Loop(vectorField, startingPoint, mesh, vertices, true);
+    dvec2 startingPoint = propStartPoint.get();
+    vec2 point;
+        switch (propSeedMode.get()) {
+          case 0:
+            if (propForwardDirection.get()) {
+                EulerLoop(vectorField, startingPoint, mesh, vertices);
+                RK4Loop(vectorField, startingPoint, mesh, vertices);
+            }
+            if (propBackwardDirection.get()) {
+                EulerLoop(vectorField, startingPoint, mesh, vertices, true);
+                RK4Loop(vectorField, startingPoint, mesh, vertices, true);
+            }
+            break;
+          // TASK 4.3 IMPLEMENTATION BEGIN
+          case 1:
+            for (int i = 0; i < propNumStreamLines.get(); i++) {
+                point = getRandomPoint(BBoxMin_, BBoxMax_);
+                if (propForwardDirection.get()) {
+                  EulerLoop(vectorField, point, mesh, vertices);
+                  RK4Loop(vectorField, point, mesh, vertices);
+                }
+                if (propBackwardDirection.get()) {
+                  EulerLoop(vectorField, point, mesh, vertices, true);
+                  RK4Loop(vectorField, point, mesh, vertices, true);
+                }
+            }
+            break;
+          // TASK 4.3 IMPLEMENTATION END
         }
-
-    } else {
-        // TODO: Seed multiple stream lines either randomly or using a uniform grid
-        // (TODO: Bonus, sample randomly according to magnitude of the vector field)
-        // TASK 4.3 IMPLEMENTATION BEGIN
-
-        // Draw start point
-
-        auto indexBufferPoints = mesh->addIndexBuffer(DrawType::Points, ConnectivityType::None);
-        vec2 point;
-        for (int i = 0; i < propNumStreamLines.get(); i++) {
-            point = getRandomPoint(BBoxMin_, BBoxMax_);
-            EulerLoop(vectorField, point, mesh, vertices, inverted);
-        }
-        // TASK 4.3 IMPLEMENTATION END
-    }
 
     mesh->addVertices(vertices);
     meshOut.setData(mesh);
