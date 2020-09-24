@@ -75,6 +75,11 @@ protected:
     // (TODO: You could define some helper functions here,
     // e.g. a function creating a single streamline from one seed point)
 
+	void EulerLoop(const VectorField2& vectorField, const dvec2& start, std::shared_ptr<inviwo::BasicMesh>& mesh, std::vector<BasicMesh::Vertex>& vertices, bool inverted = false);
+	bool Euler(const VectorField2& vectorField, const dvec2& start, dvec2& end, double& arcLength, bool inverted = false);
+
+	dvec2 GetNextStartingPoint();
+
     // Ports
 public:
     // Input Vector Field
@@ -99,6 +104,7 @@ public:
     FloatVec4Property propLineColor;
     BoolProperty propShowPoints;
     BoolProperty propForwardDirection;
+    BoolProperty propBackwardDirection;
     BoolProperty propNormalizedField;
     IntProperty propNumberSteps;
     FloatProperty propStepSize;
