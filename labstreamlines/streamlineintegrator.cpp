@@ -39,6 +39,15 @@ StreamlineIntegrator::StreamlineIntegrator()
     , propStartPoint("startPoint", "Start Point", vec2(0.5f, 0.5f), vec2(-1.f), vec2(1.f), vec2(0.1))
     , propSeedMode("seedMode", "Seeds")
     , propNumStepsTaken("numstepstaken", "Number of actual steps", 0, 0, 100000)
+    , propLineColor("lineColor", "Stream Line Color", vec4(1.0f, 0.0f, 0.0f, 1.0f), vec4(0.0f), vec4(1.0f),
+					vec4(0.1f), InvalidationLevel::InvalidOutput, PropertySemantics::Color)
+    , propShowPoints("showPoints", "Show Points")
+    , propNumberSteps("numberSteps", "Number of Steps", 5, 1, 50, 1)
+    , propStepSize("stepSize", "Step Size", 1.0f, 0, 5.0f, 0.1f)
+    , propForwardDirection("forwardDirection", "Forward Direction", true)
+    , propNormalizedField("normalizedField", "Normalized Vector Field")
+    , propMinimumVelocity("minimumVelocity", "Minimum Velocity", 0.1f, 0, 5, 0.1f)
+    , propMaximumArcLength("maximumArcLength", "Maximum Arc Length", 5, 0, 10, 0.5f)
     , mouseMoveStart("mouseMoveStart", "Move Start", [this](Event* e) { eventMoveStart(e); },
                      MouseButton::Left, MouseState::Press | MouseState::Move)
 // TODO: Initialize additional properties
@@ -63,8 +72,15 @@ StreamlineIntegrator::StreamlineIntegrator()
     addProperty(mouseMoveStart);
     addProperty(propNumStreamLines);
 
-    // TODO: Register additional properties
-    // addProperty(propertyName);
+    // Register additional properties
+    addProperty(propLineColor);
+    addProperty(propShowPoints);
+    addProperty(propNumberSteps);
+    addProperty(propStepSize);
+    addProperty(propForwardDirection);
+    addProperty(propNormalizedField);
+    addProperty(propMinimumVelocity);
+    addProperty(propMaximumArcLength);
 
     // Show properties for a single seed and hide properties for multiple seeds
     // (TODO)
@@ -146,16 +162,59 @@ void StreamlineIntegrator::process() {
 
     if (propSeedMode.get() == 0) {
         auto indexBufferPoints = mesh->addIndexBuffer(DrawType::Points, ConnectivityType::None);
+        auto indexBufferLine = mesh->addIndexBuffer(DrawType::Lines, ConnectivityType::Strip);
         vec2 startPoint = propStartPoint.get();
         // Draw start point
         Integrator::drawPoint(startPoint, vec4(0, 0, 0, 1), indexBufferPoints.get(), vertices);
 
-        // TODO: Create one stream line from the given start point
+        // Create one stream line from the given start point
+        dvec2 current = startPoint;
+        double stepSize = propStepSize.get();
+        double arcLength = 0;
+        int num_steps;
+        for (num_steps = 0; num_steps < propNumberSteps.get(); num_steps++) {
+            // Interpolate vector field from our current point
+            dvec2 vecValue = vectorField.interpolate(current);
 
-        // TODO: Use the propNumStepsTaken property to show how many steps have actually been
+            // Compute the euclidean norm and stop integration on very low / zero velocity
+            double vecNorm = sqrt(pow(vecValue.x, 2) + pow(vecValue.y, 2));
+            if (vecNorm == 0) {
+                LogProcessorInfo("Stopping integration due to zeros in the vector field.");
+                break;
+            } else if (vecNorm < propMinimumVelocity.get()) {
+                LogProcessorInfo("Stopping integration due to slow velocity.");
+                break;
+            }
+            // Invert the direction of the vector
+            if (!propForwardDirection.get()) vecValue *= -1;
+
+            // obtain the normalized vector field
+            if (propNormalizedField.get()) {
+                vecValue /= vecNorm;
+                vecNorm = 1.0;
+            }
+            // Keep track of the accumulating arc length
+            arcLength += vecNorm;
+            dvec2 next = current + stepSize * vecValue;
+
+            if (next.x < BBoxMin_.x || next.x > BBoxMax_.x ||
+                next.y < BBoxMin_.y || next.y > BBoxMax_.y) {
+                LogProcessorInfo("Stopping integration at the domain's boundary.");
+                break;
+            } else if (arcLength > propMaximumArcLength.get()) {
+                LogProcessorInfo("Stopping integration due to exceeded arc length.");
+                break;
+            }
+
+            Integrator::drawLineSegment(current, next, propLineColor.get(), indexBufferLine.get(), vertices);
+            if (propShowPoints.get()) Integrator::drawPoint(next, propLineColor.get(), indexBufferPoints.get(), vertices);
+            current = next;
+        }
+
+        // Use the propNumStepsTaken property to show how many steps have actually been
         // integrated This could be different from the desired number of steps due to stopping
         // conditions (too slow, boundary, ...)
-        propNumStepsTaken.set(0);
+        propNumStepsTaken.set(num_steps);
 
     } else {
         // TODO: Seed multiple stream lines either randomly or using a uniform grid
