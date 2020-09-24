@@ -95,7 +95,7 @@ StreamlineIntegrator::StreamlineIntegrator()
     });
 }
 
-//TASK 4.3 FUNCTIONS IMPLEMENTATION START
+//TASK 4.x FUNCTIONS IMPLEMENTATION START
 vec2 StreamlineIntegrator::getRandomPoint(){
   float r;
   vec2 point;
@@ -106,7 +106,55 @@ vec2 StreamlineIntegrator::getRandomPoint(){
   }
   return point;
 }
-//TASK 4.3 FUNCTIONS IMPLEMENTATION END
+
+int drawStreamLine(dvec2 startPoint, double stepSize, int nSteps, float minVel, bool forward, bool normalize, const VectorField2& vectorField, IndexBufferRAM* indexBufferLine, std::vector<BasicMesh::Vertex>& vertices){
+                                   
+    dvec2 BBoxMin_ = vectorField.getBBoxMin();
+    dvec2 BBoxMax_ = vectorField.getBBoxMax();
+    dvec2 current = startPoint;
+    double arcLength = 0;
+    int num_steps;
+    for (num_steps = 0; num_steps < nSteps; num_steps++) {
+        // Interpolate vector field from our current point
+        dvec2 vecValue = vectorField.interpolate(current);
+
+        // Compute the euclidean norm and stop integration on very low / zero velocity
+        double vecNorm = sqrt(pow(vecValue.x, 2) + pow(vecValue.y, 2));
+        if (vecNorm == 0) {
+            //LogProcessorInfo("Stopping integration due to zeros in the vector field.");
+            break;
+        } else if (vecNorm < minVel) {
+            //LogProcessorInfo("Stopping integration due to slow velocity.");
+            break;
+        }
+        // Invert the direction of the vector
+        if (!forward) vecValue *= -1;
+
+        // obtain the normalized vector field
+        if (normalize) {
+            vecValue /= vecNorm;
+            vecNorm = 1.0;
+        }
+        // Keep track of the accumulating arc length
+        arcLength += vecNorm;
+        dvec2 next = current + stepSize * vecValue;
+
+        if (next.x < BBoxMin_.x || next.x > BBoxMax_.x ||
+            next.y < BBoxMin_.y || next.y > BBoxMax_.y) {
+            //LogProcessorInfo("Stopping integration at the domain's boundary.");
+            break;
+        } else if (arcLength > propMaximumArcLength.get()) {
+            //LogProcessorInfo("Stopping integration due to exceeded arc length.");
+            break;
+        }
+
+        Integrator::drawLineSegment(current, next, propLineColor.get(), indexBufferLine.get(), vertices);
+        if (propShowPoints.get()) Integrator::drawPoint(next, propLineColor.get(), indexBufferPoints.get(), vertices);
+        current = next;
+    }
+    return num_steps;
+}
+//TASK 4.x FUNCTIONS IMPLEMENTATION END
 
 void StreamlineIntegrator::eventMoveStart(Event* event) {
     if (!inData.hasData()) return;
@@ -160,6 +208,8 @@ void StreamlineIntegrator::process() {
     auto mesh = std::make_shared<BasicMesh>();
     std::vector<BasicMesh::Vertex> vertices;
 
+    double stepSize = propStepSize.get();
+    int steps = propNumberSteps.get();
     if (propSeedMode.get() == 0) {
         auto indexBufferPoints = mesh->addIndexBuffer(DrawType::Points, ConnectivityType::None);
         auto indexBufferLine = mesh->addIndexBuffer(DrawType::Lines, ConnectivityType::Strip);
@@ -168,48 +218,7 @@ void StreamlineIntegrator::process() {
         Integrator::drawPoint(startPoint, vec4(0, 0, 0, 1), indexBufferPoints.get(), vertices);
 
         // Create one stream line from the given start point
-        dvec2 current = startPoint;
-        double stepSize = propStepSize.get();
-        double arcLength = 0;
-        int num_steps;
-        for (num_steps = 0; num_steps < propNumberSteps.get(); num_steps++) {
-            // Interpolate vector field from our current point
-            dvec2 vecValue = vectorField.interpolate(current);
-
-            // Compute the euclidean norm and stop integration on very low / zero velocity
-            double vecNorm = sqrt(pow(vecValue.x, 2) + pow(vecValue.y, 2));
-            if (vecNorm == 0) {
-                LogProcessorInfo("Stopping integration due to zeros in the vector field.");
-                break;
-            } else if (vecNorm < propMinimumVelocity.get()) {
-                LogProcessorInfo("Stopping integration due to slow velocity.");
-                break;
-            }
-            // Invert the direction of the vector
-            if (!propForwardDirection.get()) vecValue *= -1;
-
-            // obtain the normalized vector field
-            if (propNormalizedField.get()) {
-                vecValue /= vecNorm;
-                vecNorm = 1.0;
-            }
-            // Keep track of the accumulating arc length
-            arcLength += vecNorm;
-            dvec2 next = current + stepSize * vecValue;
-
-            if (next.x < BBoxMin_.x || next.x > BBoxMax_.x ||
-                next.y < BBoxMin_.y || next.y > BBoxMax_.y) {
-                LogProcessorInfo("Stopping integration at the domain's boundary.");
-                break;
-            } else if (arcLength > propMaximumArcLength.get()) {
-                LogProcessorInfo("Stopping integration due to exceeded arc length.");
-                break;
-            }
-
-            Integrator::drawLineSegment(current, next, propLineColor.get(), indexBufferLine.get(), vertices);
-            if (propShowPoints.get()) Integrator::drawPoint(next, propLineColor.get(), indexBufferPoints.get(), vertices);
-            current = next;
-        }
+        int num_steps = drawStreamLine(startPoint, stepSize, steps, vectorField, indexBufferLine, vertices);
 
         // Use the propNumStepsTaken property to show how many steps have actually been
         // integrated This could be different from the desired number of steps due to stopping
@@ -227,13 +236,13 @@ void StreamlineIntegrator::process() {
         vec2 point;
         for(int i=0; i<propNumStreamLines.get(); i++){
           point = getRandomPoint();
-          Integrator::drawPoint(point, vec4(0, 0, 0, 1), indexBufferPoints.get(), vertices);
+          drawStreamLine(startPoint, stepSize, steps, vectorField, indexBufferLine, vertices);
         }
         // TASK 4.3 IMPLEMENTATION END
     }
 
     mesh->addVertices(vertices);
     meshOut.setData(mesh);
-}  // namespace inviwo
+}  // process
 
 }  // namespace inviwo

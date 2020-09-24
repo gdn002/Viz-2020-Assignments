@@ -77,6 +77,10 @@ protected:
 
     //TASK 4.3 (a) returns a random point from the domain
     vec2 getRandomPoint();
+    int drawStreamLine(dvec2 startPoint, double stepSize, int steps,
+                   const VectorField2& vectorField,
+                   IndexBufferRAM* indexBufferLine,
+                   std::vector<BasicMesh::Vertex>& vertices);
 
     // Ports
 public:
