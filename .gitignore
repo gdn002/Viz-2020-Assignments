@@ -4,5 +4,6 @@
 # Exclude modules used in assignments here
 !/labmarchingsquares
 !/labstreamlines
+!/lablic
 
 # File types to ignore
