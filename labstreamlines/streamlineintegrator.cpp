@@ -208,8 +208,8 @@ void StreamlineIntegrator::process() {
         int nY = propGridPointY.get();
         float unitX = (BBoxMax_.x - BBoxMin_.x)/nX;
         float unitY = (BBoxMax_.y - BBoxMin_.y)/nY;
-        for (int j = BBoxMin_.y; j<BBoxMax_.y; j+= unitY){
-          for(int i = BBoxMin_.x; i<BBoxMax_.x; i+= unitX){
+        for (float j = BBoxMin_.y; j<BBoxMax_.y; j+= unitY){
+          for(float i = BBoxMin_.x; i<BBoxMax_.x; i+= unitX){
             point = {i,j};
             if (propForwardDirection.get()) {
               EulerLoop(vectorField, point, mesh, vertices);
