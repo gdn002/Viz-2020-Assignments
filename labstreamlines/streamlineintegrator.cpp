@@ -191,8 +191,30 @@ void StreamlineIntegrator::process() {
     } // TASK 4.3 IMPLEMENTATION BEGIN
     else{
       if(propRandom.get()){
+            dvec2 vecValue;
+            double maxMag = 0;
+            dvec2 bbmin, bbmax;
+            int nX = vectorField.getNumVerticesPerDim().x;
+            int maxi = 0, maxj = 0;
+          int nY = vectorField.getNumVerticesPerDim().y;
+            for (int i = 0; i < nX; i++) {
+              for (int j = 0; j < nY; j++) {
+                  vecValue = vectorField.interpolate({i,j});
+                  if (Magnitude(vecValue) > maxMag) {
+                      maxMag = Magnitude(vecValue);
+                      maxi = i;
+                      maxj = j;
+				  }
+			  }
+			}
+            bbmin.x = maxi - (BBoxMax_.x - BBoxMin_.x / 4);
+            bbmin.y = maxj - (BBoxMax_.y - BBoxMin_.y / 4);
+            bbmax.x = maxi + (BBoxMax_.x - BBoxMin_.x / 4);
+            bbmax.y = maxj + (BBoxMax_.y - BBoxMin_.y / 4);
+			
+
         for (int i = 0; i < propNumStreamLines.get(); i++) {
-            point = getRandomPoint(BBoxMin_, BBoxMax_);
+            point = getRandomPoint(bbmin, bbmax);
             if (propForwardDirection.get()) {
               EulerLoop(vectorField, point, mesh, vertices);
               RK4Loop(vectorField, point, mesh, vertices);
