@@ -28,7 +28,6 @@ public:
 
     // Methods
 public:
-
     // Add a point to a mesh
     static void drawPoint(const dvec2& p, const vec4& color, IndexBufferRAM* indexBuffer,
                           std::vector<BasicMesh::Vertex>& vertices);
@@ -45,10 +44,26 @@ public:
     // Pass any other properties that influence the integration process
     // Examples would be the stepsize, inegreation direction, ...
     static dvec2 RK4(const VectorField2& vectorField, const dvec2& position, const float& stepSize);
-    static dvec2 Euler(const VectorField2& vectorField, const dvec2& position, const float& stepSize);
+    static dvec2 Euler(const VectorField2& vectorField, const dvec2& position,
+                       const float& stepSize);
 
-	static dvec2 Multiply(const dvec2& vector, const float& factor);
+    static bool EulerLine(const VectorField2& vectorField, const dvec2& start, dvec2& end,
+                          double& arcLength, bool inverted = false);
+    static bool RK4line(const VectorField2& vectorField, const dvec2& start, dvec2& end,
+                        double& arcLength, bool inverted = false);
+
+    static int EulerLoop(const VectorField2& vectorField, const dvec2& start,
+                          std::shared_ptr<inviwo::BasicMesh>& mesh,
+                          std::vector<BasicMesh::Vertex>& vertices, bool inverted = false,
+                          const vec4& color = {0, 0, 0, 255}, int steps = 1, bool showSteps = false);
+    static int RK4Loop(const VectorField2& vectorField, const dvec2& start,
+                        std::shared_ptr<BasicMesh>& mesh, std::vector<BasicMesh::Vertex>& vertices,
+                        bool inverted = false);
+
+    static dvec2 Multiply(const dvec2& vector, const float& factor);
     static dvec2 Divide(const dvec2& vector, const float& divisor);
+
+    static double Magnitude(const dvec2& vec);
 };
 
 }  // namespace inviwo
