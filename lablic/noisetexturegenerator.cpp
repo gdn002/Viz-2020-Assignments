@@ -10,6 +10,8 @@
 
 #include <lablic/noisetexturegenerator.h>
 #include <labutils/rgbaimage.h>
+#include <stdlib.h>
+#include <limits.h>
 
 namespace inviwo {
 
@@ -29,14 +31,17 @@ NoiseTextureGenerator::NoiseTextureGenerator()
     , texOut_("texOut")
     , texSize_("texSize", "Texture Size", vec2(512, 512), vec2(1, 1), vec2(2048, 2048), vec2(1, 1))
 // TODO: Register additional properties
+    , propRandomSeed("randomSeed", "Random Seed", 0, 0, 2048, 1)
 {
     // Register ports
     addPort(texOut_);
 
     // Register properties
     addProperty(texSize_);
+    addProperty(propRandomSeed);
 
     // TODO: Register additional properties
+
 }
 
 void NoiseTextureGenerator::process() {
@@ -74,17 +79,15 @@ void NoiseTextureGenerator::process() {
     LogProcessorInfo("The interpolated color at (0.5,0.5) is " << color << " with grayscale value "
                                                                << value << ".");
 
-    for (int j = 0; j < texSize_.get().y; j++) {
-        for (int i = 0; i < texSize_.get().x; i++) {
+    /* initialize random seed: */
+    srand (propRandomSeed.get());
 
-            val = 256 / 2;
-            // TODO: Randomly sample values for the texture, this produces the same gray value for
-            // all pixels
-            // A value within the ouput image is set by specifying pixel position and color
-            noiseTexture.setPixelGrayScale(size2_t(i, j), val);
-            // Alternatively, the entire color can be specified
-            // noiseTexture.setPixel(size2_t(i, j), vec4(val, val, val, 255));
-        }
+    int p;
+    for (int j = 0; j < texSize_.get().y; j++) {
+      for (int i = 0; i < texSize_.get().x; i++) {
+        p = (rand() % 2) * 255;
+        noiseTexture.setPixelGrayScale(size2_t(i, j), p);
+      }
     }
 
     texOut_.setData(outImage);

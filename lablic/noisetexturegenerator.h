@@ -56,6 +56,7 @@ public:
 public:
     IntVec2Property texSize_;
 
+    IntProperty propRandomSeed;
     // TODO: Declare additional properties
     // IntProperty properyName;
     // TemplateOptionProperty<int> propertyName2;
