@@ -176,12 +176,17 @@ void StreamlineIntegrator::process() {
     std::vector<BasicMesh::Vertex> vertices;
 
     double stepSize = propStepSize.get();
-    int steps = propNumberSteps.get(), num_steps;
+    int steps = propNumberSteps.get(), num_steps, msg;
     dvec2 startingPoint = propStartPoint.get();
     vec2 point;
     if (propSeedMode.get() == 0) {
         if (propForwardDirection.get()) {
-            num_steps = Integrator::EulerLoop(vectorField, point, mesh, vertices);
+            LogProcessorInfo(Integrator::EulerLoop(
+                vectorField, point, mesh, vertices, num_steps, propStepSize.get(),
+                propMinimumVelocity.get(), propMaximumArcLength.get(), propNormalizedField.get(),
+                propEulerColor.get(), propNumberSteps.get(), propShowPoints.get()));
+			
+                                              
             num_steps = Integrator::RK4Loop(vectorField, point, mesh, vertices);
         }
         if (propBackwardDirection.get()) {
@@ -223,6 +228,10 @@ void StreamlineIntegrator::process() {
         }
       }
     } // TASK 4.3 IMPLEMENTATION END
+
+    // Use the propNumStepsTaken property to show how many steps have actually been
+    // integrated This could be different from the desired number of steps due to stopping
+    // conditions (too slow, boundary, ...)
     propNumStepsTaken.set(num_steps);
 
     mesh->addVertices(vertices);

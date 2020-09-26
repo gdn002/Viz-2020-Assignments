@@ -15,6 +15,7 @@
 #include <inviwo/core/datastructures/volume/volumeram.h>
 #include <labstreamlines/labstreamlinesmoduledefine.h>
 #include <labutils/scalarvectorfield.h>
+#include <string>
 
 namespace inviwo {
 
@@ -47,22 +48,22 @@ public:
     static dvec2 Euler(const VectorField2& vectorField, const dvec2& position,
                        const float& stepSize);
 
-    static int EulerLine(const VectorField2& vectorField, const dvec2& start, dvec2& end,
-                         double& arcLength, float stepSize, float minVelocity, float maxArchLength,
-                         bool normalize, bool inverted = false);
-    static int RK4line(const VectorField2& vectorField, const dvec2& start, dvec2& end,
-                        double& arcLength, bool inverted = false);
+    static std::string EulerLine(const VectorField2& vectorField, const dvec2& start, dvec2& end,
+                            double& arcLength, float stepSize, float minVelocity,
+                            float maxArchLength, bool normalize, bool inverted = false);
+    static std::string RK4line(const VectorField2& vectorField, const dvec2& start, dvec2& end,
+                       double& arcLength, bool inverted = false);
 
-    static int EulerLoop(const VectorField2& vectorField, const dvec2& start,
+    static std::string EulerLoop(const VectorField2& vectorField, const dvec2& start,
                          std::shared_ptr<inviwo::BasicMesh>& mesh,
                          std::vector<BasicMesh::Vertex>& vertices, int& stepsTaken, float stepSize,
                          float minVelocity, float maxArchLength, bool normalize,
                          const vec4& color = {0, 0, 0, 255}, int steps = 1, bool showSteps = false,
                          bool inverted = false);
-                         
-    static int RK4Loop(const VectorField2& vectorField, const dvec2& start,
-                        std::shared_ptr<BasicMesh>& mesh, std::vector<BasicMesh::Vertex>& vertices,
-                        bool inverted = false);
+
+    static std::string RK4Loop(const VectorField2& vectorField, const dvec2& start,
+                       std::shared_ptr<BasicMesh>& mesh, std::vector<BasicMesh::Vertex>& vertices,
+                       bool inverted = false);
 
     static dvec2 Multiply(const dvec2& vector, const float& factor);
     static dvec2 Divide(const dvec2& vector, const float& divisor);

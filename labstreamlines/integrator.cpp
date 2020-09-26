@@ -58,7 +58,7 @@ dvec2 Integrator::RK4(const VectorField2& vectorField, const dvec2& position, co
 	return position + Multiply((v1 + v2 + v3 + v4), stepSize);
 }
 
-int Integrator::EulerLine(const VectorField2& vectorField, const dvec2& start, dvec2& end,
+std::string Integrator::EulerLine(const VectorField2& vectorField, const dvec2& start, dvec2& end,
                           double& arcLength, float stepSize, float minVelocity, float maxArchLength,
                           bool normalize, bool inverted) {
 
@@ -70,9 +70,9 @@ int Integrator::EulerLine(const VectorField2& vectorField, const dvec2& start, d
     // Compute the euclidean norm and stop integration on very low / zero velocity
     double vecNorm = Magnitude(vecValue);
     if (vecNorm == 0) {
-        return 1;
+        return "Stopping integration due to zeros in the vector field.";
     } else if (vecNorm < minVelocity) {
-        return 2;
+        return "Stopping integration due to slow velocity.";
     }
     // Invert the direction of the vector
     if (inverted) vecValue *= -1;
@@ -87,15 +87,15 @@ int Integrator::EulerLine(const VectorField2& vectorField, const dvec2& start, d
     end = start + ((double)stepSize * vecValue);
 
     if (end.x < bbmin.x || end.x > bbmax.x || end.y < bbmin.y || end.y > bbmax.y) {
-        return 3;
+        return "Stopping integration at the domain's boundary.";
     } else if (arcLength > maxArchLength) {
-        return 4;
+        return "Stopping integration due to exceeded arc length.";
     }
 
     return 0;
 }
 
-bool Integrator::RK4line(const VectorField2& vectorField, const dvec2& start,
+std::string Integrator::RK4line(const VectorField2& vectorField, const dvec2& start,
                                            dvec2& end, double& arcLength, bool inverted) {
     double stepSize = propStepSize.get();
 
@@ -155,7 +155,7 @@ bool Integrator::RK4line(const VectorField2& vectorField, const dvec2& start,
     return true;
 }
 
-int Integrator::EulerLoop(const VectorField2& vectorField, const dvec2& start,
+std::string Integrator::EulerLoop(const VectorField2& vectorField, const dvec2& start,
                           std::shared_ptr<inviwo::BasicMesh>& mesh,
                           std::vector<BasicMesh::Vertex>& vertices, int& stepsTaken, float stepSize,
                           float minVelocity, float maxArchLength, bool normalize,
@@ -171,13 +171,13 @@ int Integrator::EulerLoop(const VectorField2& vectorField, const dvec2& start,
     // Create one stream line from the given start point
     dvec2 current = start;
     double arcLength = 0;
-    int msgCode;
+    std::string msg;
     for (stepsTaken = 0; stepsTaken < steps; stepsTaken++) {
 
         dvec2 next;
-        msgCode = EulerLine(vectorField, current, next, arcLength, stepSize, minVelocity,
+        msg = EulerLine(vectorField, current, next, arcLength, stepSize, minVelocity,
                              maxArchLength, normalize, inverted);
-        if (msgCode> 0) break;
+        if (msg != 0) break;
 
         drawLineSegment(current, next, color, indexBufferLine.get(),
                                     vertices);
@@ -185,14 +185,10 @@ int Integrator::EulerLoop(const VectorField2& vectorField, const dvec2& start,
             drawPoint(next, color, indexBufferPoints.get(), vertices);
         current = next;
     }
-
-	// Use the propNumStepsTaken property to show how many steps have actually been
-    // integrated This could be different from the desired number of steps due to stopping
-    // conditions (too slow, boundary, ...)
-    return msgCode;
+    return msg;
 }
 
-int Integrator::RK4Loop(const VectorField2& vectorField, const dvec2& start,
+std::string Integrator::RK4Loop(const VectorField2& vectorField, const dvec2& start,
                                            std::shared_ptr<inviwo::BasicMesh>& mesh,
                                            std::vector<BasicMesh::Vertex>& vertices,
                                            bool inverted) {
