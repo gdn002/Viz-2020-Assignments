@@ -92,7 +92,7 @@ std::string Integrator::EulerLine(const VectorField2& vectorField, const dvec2& 
         return "Stopping integration due to exceeded arc length.";
     }
 
-    return 0;
+    return "";
 }
 
 std::string Integrator::RK4line(const VectorField2& vectorField, const dvec2& start, dvec2& end,
@@ -151,7 +151,7 @@ std::string Integrator::RK4line(const VectorField2& vectorField, const dvec2& st
         return "Stopping integration due to exceeded arc length.";
     }
 
-    return 0;
+    return "";
 }
 
 std::string Integrator::EulerLoop(const VectorField2& vectorField, const dvec2& start,
@@ -160,7 +160,7 @@ std::string Integrator::EulerLoop(const VectorField2& vectorField, const dvec2& 
                           float minVelocity, float maxArchLength, bool normalize,
                           const vec4& color, int steps, bool showSteps, bool inverted) {
     // Bypass entire function if the Euler color alpha is zero
-    if (color.a == 0) return;
+    if (color.a == 0) return "";
 
     auto indexBufferPoints = mesh->addIndexBuffer(DrawType::Points, ConnectivityType::None);
     auto indexBufferLine = mesh->addIndexBuffer(DrawType::Lines, ConnectivityType::Strip);
@@ -176,7 +176,7 @@ std::string Integrator::EulerLoop(const VectorField2& vectorField, const dvec2& 
         dvec2 next;
         msg = EulerLine(vectorField, current, next, arcLength, stepSize, minVelocity,
                              maxArchLength, normalize, inverted);
-        if (msg != 0) break;
+        if (msg != "") break;
 
         drawLineSegment(current, next, color, indexBufferLine.get(),
                                     vertices);
@@ -191,10 +191,10 @@ std::string Integrator::RK4Loop(const VectorField2& vectorField, const dvec2& st
                                 std::shared_ptr<inviwo::BasicMesh>& mesh,
                                 std::vector<BasicMesh::Vertex>& vertices, int& stepsTaken,
                                 float stepSize, float minVelocity, float maxArchLength,
-                                bool normalize, const vec4& color = {0, 0, 0, 255}, int steps = 1,
-                                bool showSteps = false, bool inverted = false) {
+                                bool normalize, const vec4& color, int steps,
+                                bool showSteps, bool inverted) {
     // Bypass entire function if the RK4 color alpha is zero
-    if (color.a == 0) return;
+    if (color.a == 0) return "";
 
     auto indexBufferPoints = mesh->addIndexBuffer(DrawType::Points, ConnectivityType::None);
     auto indexBufferLine = mesh->addIndexBuffer(DrawType::Lines, ConnectivityType::Strip);
@@ -210,7 +210,7 @@ std::string Integrator::RK4Loop(const VectorField2& vectorField, const dvec2& st
         dvec2 next;
         msg = RK4line(vectorField, current, next, arcLength, stepSize, minVelocity, maxArchLength,
                         normalize, inverted);
-        if (msg != 0) break;
+        if (msg != "") break;
 
         Integrator::drawLineSegment(current, next, color, indexBufferLine.get(),
                                     vertices);
