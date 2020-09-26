@@ -47,15 +47,19 @@ public:
     static dvec2 Euler(const VectorField2& vectorField, const dvec2& position,
                        const float& stepSize);
 
-    static bool EulerLine(const VectorField2& vectorField, const dvec2& start, dvec2& end,
-                          double& arcLength, bool inverted = false);
-    static bool RK4line(const VectorField2& vectorField, const dvec2& start, dvec2& end,
+    static int EulerLine(const VectorField2& vectorField, const dvec2& start, dvec2& end,
+                         double& arcLength, float stepSize, float minVelocity, float maxArchLength,
+                         bool normalize, bool inverted = false);
+    static int RK4line(const VectorField2& vectorField, const dvec2& start, dvec2& end,
                         double& arcLength, bool inverted = false);
 
     static int EulerLoop(const VectorField2& vectorField, const dvec2& start,
-                          std::shared_ptr<inviwo::BasicMesh>& mesh,
-                          std::vector<BasicMesh::Vertex>& vertices, bool inverted = false,
-                          const vec4& color = {0, 0, 0, 255}, int steps = 1, bool showSteps = false);
+                         std::shared_ptr<inviwo::BasicMesh>& mesh,
+                         std::vector<BasicMesh::Vertex>& vertices, int& stepsTaken, float stepSize,
+                         float minVelocity, float maxArchLength, bool normalize,
+                         const vec4& color = {0, 0, 0, 255}, int steps = 1, bool showSteps = false,
+                         bool inverted = false);
+                         
     static int RK4Loop(const VectorField2& vectorField, const dvec2& start,
                         std::shared_ptr<BasicMesh>& mesh, std::vector<BasicMesh::Vertex>& vertices,
                         bool inverted = false);

@@ -58,42 +58,41 @@ dvec2 Integrator::RK4(const VectorField2& vectorField, const dvec2& position, co
 	return position + Multiply((v1 + v2 + v3 + v4), stepSize);
 }
 
-int Integrator::EulerLine(const VectorField2& vectorField, const dvec2& start,
-                                         dvec2& end, double& arcLength, bool inverted ) {
+int Integrator::EulerLine(const VectorField2& vectorField, const dvec2& start, dvec2& end,
+                          double& arcLength, float stepSize, float minVelocity, float maxArchLength,
+                          bool normalize, bool inverted) {
 
     // Interpolate vector field from our current point
     dvec2 vecValue = vectorField.interpolate(start);
+    dvec2 bbmin = vectorField.getBBoxMin();
+    dvec2 bbmax = vectorField.getBBoxMax();
 
     // Compute the euclidean norm and stop integration on very low / zero velocity
     double vecNorm = Magnitude(vecValue);
     if (vecNorm == 0) {
-        //LogProcessorInfo("Stopping integration due to zeros in the vector field.");
         return 1;
-    } else if (vecNorm < propMinimumVelocity.get()) {
-        //LogProcessorInfo("Stopping integration due to slow velocity.");
+    } else if (vecNorm < minVelocity) {
         return 2;
     }
     // Invert the direction of the vector
     if (inverted) vecValue *= -1;
 
     // obtain the normalized vector field
-    if (propNormalizedField.get()) {
+    if (normalize) {
         vecValue /= vecNorm;
         vecNorm = 1.0;
     }
     // Keep track of the accumulating arc length
     arcLength += vecNorm;
-    end = start + ((double)propStepSize.get() * vecValue);
+    end = start + ((double)stepSize * vecValue);
 
-    if (end.x < BBoxMin_.x || end.x > BBoxMax_.x || end.y < BBoxMin_.y || end.y > BBoxMax_.y) {
-        //LogProcessorInfo("Stopping integration at the domain's boundary.");
+    if (end.x < bbmin.x || end.x > bbmax.x || end.y < bbmin.y || end.y > bbmax.y) {
         return 3;
-    } else if (arcLength > propMaximumArcLength.get()) {
-        //LogProcessorInfo("Stopping integration due to exceeded arc length.");
+    } else if (arcLength > maxArchLength) {
         return 4;
     }
 
-    return true;
+    return 0;
 }
 
 bool Integrator::RK4line(const VectorField2& vectorField, const dvec2& start,
@@ -157,9 +156,10 @@ bool Integrator::RK4line(const VectorField2& vectorField, const dvec2& start,
 }
 
 int Integrator::EulerLoop(const VectorField2& vectorField, const dvec2& start,
-                                             std::shared_ptr<inviwo::BasicMesh>& mesh,
-                                             std::vector<BasicMesh::Vertex>& vertices, bool inverted,
-                           const vec4& color, int steps, bool showSteps) {
+                          std::shared_ptr<inviwo::BasicMesh>& mesh,
+                          std::vector<BasicMesh::Vertex>& vertices, int& stepsTaken, float stepSize,
+                          float minVelocity, float maxArchLength, bool normalize,
+                          const vec4& color, int steps, bool showSteps, bool inverted) {
     // Bypass entire function if the Euler color alpha is zero
     if (color.a == 0) return;
 
@@ -171,23 +171,25 @@ int Integrator::EulerLoop(const VectorField2& vectorField, const dvec2& start,
     // Create one stream line from the given start point
     dvec2 current = start;
     double arcLength = 0;
-    int num_steps;
-    for (num_steps = 0; num_steps < steps; num_steps++) {
+    int msgCode;
+    for (stepsTaken = 0; stepsTaken < steps; stepsTaken++) {
 
         dvec2 next;
-        if (!EulerLine(vectorField, current, next, arcLength, inverted)) break;
+        msgCode = EulerLine(vectorField, current, next, arcLength, stepSize, minVelocity,
+                             maxArchLength, normalize, inverted);
+        if (msgCode> 0) break;
 
-        Integrator::drawLineSegment(current, next, color, indexBufferLine.get(),
+        drawLineSegment(current, next, color, indexBufferLine.get(),
                                     vertices);
         if (showSteps)
-            Integrator::drawPoint(next, color, indexBufferPoints.get(), vertices);
+            drawPoint(next, color, indexBufferPoints.get(), vertices);
         current = next;
     }
 
 	// Use the propNumStepsTaken property to show how many steps have actually been
     // integrated This could be different from the desired number of steps due to stopping
     // conditions (too slow, boundary, ...)
-    return num_steps;
+    return msgCode;
 }
 
 int Integrator::RK4Loop(const VectorField2& vectorField, const dvec2& start,
