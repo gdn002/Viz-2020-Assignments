@@ -185,13 +185,20 @@ void StreamlineIntegrator::process() {
                 vectorField, point, mesh, vertices, num_steps, propStepSize.get(),
                 propMinimumVelocity.get(), propMaximumArcLength.get(), propNormalizedField.get(),
                 propEulerColor.get(), propNumberSteps.get(), propShowPoints.get()));
-			
-                                              
-            num_steps = Integrator::RK4Loop(vectorField, point, mesh, vertices);
+            LogProcessorInfo(Integrator::RK4Loop(
+                vectorField, point, mesh, vertices, num_steps, propStepSize.get(),
+                propMinimumVelocity.get(), propMaximumArcLength.get(), propNormalizedField.get(),
+                propRK4Color.get(), propNumberSteps.get(), propShowPoints.get()));
         }
         if (propBackwardDirection.get()) {
-            num_steps = Integrator::EulerLoop(vectorField, point, mesh, vertices, true);
-            num_steps = Integrator::RK4Loop(vectorField, point, mesh, vertices, true);
+            LogProcessorInfo(Integrator::EulerLoop(
+                vectorField, point, mesh, vertices, num_steps, propStepSize.get(),
+                propMinimumVelocity.get(), propMaximumArcLength.get(), propNormalizedField.get(),
+                propEulerColor.get(), propNumberSteps.get(), propShowPoints.get(), true));
+            LogProcessorInfo(Integrator::RK4Loop(
+                vectorField, point, mesh, vertices, num_steps, propStepSize.get(),
+                propMinimumVelocity.get(), propMaximumArcLength.get(), propNormalizedField.get(),
+                propRK4Color.get(), propNumberSteps.get(), propShowPoints.get(), true));
         }
     } // TASK 4.3 IMPLEMENTATION BEGIN
     else{

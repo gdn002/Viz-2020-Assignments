@@ -106,7 +106,7 @@ public:
     BoolProperty propBackwardDirection;
     BoolProperty propNormalizedField;
     IntProperty propNumberSteps;
-    FloatProperty propStepSize;
+    DoubleProperty propStepSize;
     FloatProperty propMinimumVelocity;
     FloatProperty propMaximumArcLength;
 
