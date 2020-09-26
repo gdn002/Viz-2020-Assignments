@@ -159,30 +159,32 @@ std::string Integrator::EulerLoop(const VectorField2& vectorField, const dvec2& 
                           std::vector<BasicMesh::Vertex>& vertices, int& stepsTaken, float stepSize,
                           float minVelocity, float maxArchLength, bool normalize,
                           const vec4& color, int steps, bool showSteps, bool inverted) {
+    std::string msg = "";
     // Bypass entire function if the Euler color alpha is zero
-    if (color.a == 0) return;
+    if (color.a == 0){
 
-    auto indexBufferPoints = mesh->addIndexBuffer(DrawType::Points, ConnectivityType::None);
-    auto indexBufferLine = mesh->addIndexBuffer(DrawType::Lines, ConnectivityType::Strip);
-    // Draw start point
-    Integrator::drawPoint(start, vec4(0, 0, 0, 1), indexBufferPoints.get(), vertices);
+      auto indexBufferPoints = mesh->addIndexBuffer(DrawType::Points, ConnectivityType::None);
+      auto indexBufferLine = mesh->addIndexBuffer(DrawType::Lines, ConnectivityType::Strip);
+      // Draw start point
+      Integrator::drawPoint(start, vec4(0, 0, 0, 1), indexBufferPoints.get(), vertices);
 
-    // Create one stream line from the given start point
-    dvec2 current = start;
-    double arcLength = 0;
-    std::string msg;
-    for (stepsTaken = 0; stepsTaken < steps; stepsTaken++) {
+      // Create one stream line from the given start point
+      dvec2 current = start;
+      double arcLength = 0;
+      std::string msg;
+      for (stepsTaken = 0; stepsTaken < steps; stepsTaken++) {
 
-        dvec2 next;
-        msg = EulerLine(vectorField, current, next, arcLength, stepSize, minVelocity,
-                             maxArchLength, normalize, inverted);
-        if (msg != 0) break;
+          dvec2 next;
+          msg = EulerLine(vectorField, current, next, arcLength, stepSize, minVelocity,
+                               maxArchLength, normalize, inverted);
+          if (msg != "") break;
 
-        drawLineSegment(current, next, color, indexBufferLine.get(),
-                                    vertices);
-        if (showSteps)
-            drawPoint(next, color, indexBufferPoints.get(), vertices);
-        current = next;
+          drawLineSegment(current, next, color, indexBufferLine.get(),
+                                      vertices);
+          if (showSteps)
+              drawPoint(next, color, indexBufferPoints.get(), vertices);
+          current = next;
+      }
     }
     return msg;
 }
@@ -191,37 +193,34 @@ std::string Integrator::RK4Loop(const VectorField2& vectorField, const dvec2& st
                                 std::shared_ptr<inviwo::BasicMesh>& mesh,
                                 std::vector<BasicMesh::Vertex>& vertices, int& stepsTaken,
                                 float stepSize, float minVelocity, float maxArchLength,
-                                bool normalize, const vec4& color = {0, 0, 0, 255}, int steps = 1,
-                                bool showSteps = false, bool inverted = false) {
+                                bool normalize, const vec4& color, int steps,
+                                bool showSteps, bool inverted) {
+    std::string msg = "";
     // Bypass entire function if the RK4 color alpha is zero
-    if (color.a == 0) return;
+    if (color.a != 0){
 
-    auto indexBufferPoints = mesh->addIndexBuffer(DrawType::Points, ConnectivityType::None);
-    auto indexBufferLine = mesh->addIndexBuffer(DrawType::Lines, ConnectivityType::Strip);
-    // Draw start point
-    Integrator::drawPoint(start, vec4(0, 0, 0, 1), indexBufferPoints.get(), vertices);
+      auto indexBufferPoints = mesh->addIndexBuffer(DrawType::Points, ConnectivityType::None);
+      auto indexBufferLine = mesh->addIndexBuffer(DrawType::Lines, ConnectivityType::Strip);
+      // Draw start point
+      Integrator::drawPoint(start, vec4(0, 0, 0, 1), indexBufferPoints.get(), vertices);
 
-    // Create one stream line from the given start point
-    dvec2 current = start;
-    double arcLength = 0;
-    std::string msg;
-    for (stepsTaken = 0; stepsTaken < steps; stepsTaken++) {
+      // Create one stream line from the given start point
+      dvec2 current = start;
+      double arcLength = 0;
+      for (stepsTaken = 0; stepsTaken < steps; stepsTaken++) {
 
-        dvec2 next;
-        msg = RK4line(vectorField, current, next, arcLength, stepSize, minVelocity, maxArchLength,
-                        normalize, inverted);
-        if (msg != 0) break;
+          dvec2 next;
+          msg = RK4line(vectorField, current, next, arcLength, stepSize, minVelocity, maxArchLength,
+                          normalize, inverted);
+          if (msg != "") break;
 
-        Integrator::drawLineSegment(current, next, color, indexBufferLine.get(),
-                                    vertices);
-        if (showSteps)
-            Integrator::drawPoint(next, color, indexBufferPoints.get(), vertices);
-        current = next;
+          Integrator::drawLineSegment(current, next, color, indexBufferLine.get(),
+                                      vertices);
+          if (showSteps)
+              Integrator::drawPoint(next, color, indexBufferPoints.get(), vertices);
+          current = next;
+      }
     }
-
-    // Use the propNumStepsTaken property to show how many steps have actually been
-    // integrated This could be different from the desired number of steps due to stopping
-    // conditions (too slow, boundary, ...)
     return msg;
 }
 
