@@ -92,7 +92,7 @@ std::string Integrator::EulerLine(const VectorField2& vectorField, const dvec2& 
         return "Stopping integration due to exceeded arc length.";
     }
 
-    return 0;
+    return "";
 }
 
 std::string Integrator::RK4line(const VectorField2& vectorField, const dvec2& start, dvec2& end,
@@ -151,7 +151,7 @@ std::string Integrator::RK4line(const VectorField2& vectorField, const dvec2& st
         return "Stopping integration due to exceeded arc length.";
     }
 
-    return 0;
+    return "";
 }
 
 std::string Integrator::EulerLoop(const VectorField2& vectorField, const dvec2& start,
@@ -161,30 +161,28 @@ std::string Integrator::EulerLoop(const VectorField2& vectorField, const dvec2& 
                           const vec4& color, int steps, bool showSteps, bool inverted) {
     std::string msg = "";
     // Bypass entire function if the Euler color alpha is zero
-    if (color.a == 0){
+    if (color.a == 0) return "";
 
-      auto indexBufferPoints = mesh->addIndexBuffer(DrawType::Points, ConnectivityType::None);
-      auto indexBufferLine = mesh->addIndexBuffer(DrawType::Lines, ConnectivityType::Strip);
-      // Draw start point
-      Integrator::drawPoint(start, vec4(0, 0, 0, 1), indexBufferPoints.get(), vertices);
+    auto indexBufferPoints = mesh->addIndexBuffer(DrawType::Points, ConnectivityType::None);
+    auto indexBufferLine = mesh->addIndexBuffer(DrawType::Lines, ConnectivityType::Strip);
+    // Draw start point
+    Integrator::drawPoint(start, vec4(0, 0, 0, 1), indexBufferPoints.get(), vertices);
 
-      // Create one stream line from the given start point
-      dvec2 current = start;
-      double arcLength = 0;
-      std::string msg;
-      for (stepsTaken = 0; stepsTaken < steps; stepsTaken++) {
+    // Create one stream line from the given start point
+    dvec2 current = start;
+    double arcLength = 0;
+    for (stepsTaken = 0; stepsTaken < steps; stepsTaken++) {
 
-          dvec2 next;
-          msg = EulerLine(vectorField, current, next, arcLength, stepSize, minVelocity,
-                               maxArchLength, normalize, inverted);
-          if (msg != "") break;
+        dvec2 next;
+        msg = EulerLine(vectorField, current, next, arcLength, stepSize, minVelocity,
+                             maxArchLength, normalize, inverted);
+        if (msg != "") break;
 
-          drawLineSegment(current, next, color, indexBufferLine.get(),
-                                      vertices);
-          if (showSteps)
-              drawPoint(next, color, indexBufferPoints.get(), vertices);
-          current = next;
-      }
+        drawLineSegment(current, next, color, indexBufferLine.get(),
+                                    vertices);
+        if (showSteps)
+            drawPoint(next, color, indexBufferPoints.get(), vertices);
+        current = next;
     }
     return msg;
 }
@@ -197,29 +195,28 @@ std::string Integrator::RK4Loop(const VectorField2& vectorField, const dvec2& st
                                 bool showSteps, bool inverted) {
     std::string msg = "";
     // Bypass entire function if the RK4 color alpha is zero
-    if (color.a != 0){
+    if (color.a == 0) return "";
 
-      auto indexBufferPoints = mesh->addIndexBuffer(DrawType::Points, ConnectivityType::None);
-      auto indexBufferLine = mesh->addIndexBuffer(DrawType::Lines, ConnectivityType::Strip);
-      // Draw start point
-      Integrator::drawPoint(start, vec4(0, 0, 0, 1), indexBufferPoints.get(), vertices);
+    auto indexBufferPoints = mesh->addIndexBuffer(DrawType::Points, ConnectivityType::None);
+    auto indexBufferLine = mesh->addIndexBuffer(DrawType::Lines, ConnectivityType::Strip);
+    // Draw start point
+    Integrator::drawPoint(start, vec4(0, 0, 0, 1), indexBufferPoints.get(), vertices);
 
-      // Create one stream line from the given start point
-      dvec2 current = start;
-      double arcLength = 0;
-      for (stepsTaken = 0; stepsTaken < steps; stepsTaken++) {
+    // Create one stream line from the given start point
+    dvec2 current = start;
+    double arcLength = 0;
+    for (stepsTaken = 0; stepsTaken < steps; stepsTaken++) {
 
-          dvec2 next;
-          msg = RK4line(vectorField, current, next, arcLength, stepSize, minVelocity, maxArchLength,
-                          normalize, inverted);
-          if (msg != "") break;
+        dvec2 next;
+        msg = RK4line(vectorField, current, next, arcLength, stepSize, minVelocity, maxArchLength,
+                        normalize, inverted);
+        if (msg != "") break;
 
-          Integrator::drawLineSegment(current, next, color, indexBufferLine.get(),
-                                      vertices);
-          if (showSteps)
-              Integrator::drawPoint(next, color, indexBufferPoints.get(), vertices);
-          current = next;
-      }
+        Integrator::drawLineSegment(current, next, color, indexBufferLine.get(),
+                                    vertices);
+        if (showSteps)
+            Integrator::drawPoint(next, color, indexBufferPoints.get(), vertices);
+        current = next;
     }
     return msg;
 }
