@@ -159,6 +159,7 @@ std::string Integrator::EulerLoop(const VectorField2& vectorField, const dvec2& 
                           std::vector<BasicMesh::Vertex>& vertices, int& stepsTaken, float stepSize,
                           float minVelocity, float maxArchLength, bool normalize,
                           const vec4& color, int steps, bool showSteps, bool inverted) {
+    std::string msg = "";
     // Bypass entire function if the Euler color alpha is zero
     if (color.a == 0) return "";
 
@@ -170,7 +171,6 @@ std::string Integrator::EulerLoop(const VectorField2& vectorField, const dvec2& 
     // Create one stream line from the given start point
     dvec2 current = start;
     double arcLength = 0;
-    std::string msg;
     for (stepsTaken = 0; stepsTaken < steps; stepsTaken++) {
 
         dvec2 next;
@@ -193,6 +193,7 @@ std::string Integrator::RK4Loop(const VectorField2& vectorField, const dvec2& st
                                 float stepSize, float minVelocity, float maxArchLength,
                                 bool normalize, const vec4& color, int steps,
                                 bool showSteps, bool inverted) {
+    std::string msg = "";
     // Bypass entire function if the RK4 color alpha is zero
     if (color.a == 0) return "";
 
@@ -204,7 +205,6 @@ std::string Integrator::RK4Loop(const VectorField2& vectorField, const dvec2& st
     // Create one stream line from the given start point
     dvec2 current = start;
     double arcLength = 0;
-    std::string msg;
     for (stepsTaken = 0; stepsTaken < steps; stepsTaken++) {
 
         dvec2 next;
@@ -218,10 +218,6 @@ std::string Integrator::RK4Loop(const VectorField2& vectorField, const dvec2& st
             Integrator::drawPoint(next, color, indexBufferPoints.get(), vertices);
         current = next;
     }
-
-    // Use the propNumStepsTaken property to show how many steps have actually been
-    // integrated This could be different from the desired number of steps due to stopping
-    // conditions (too slow, boundary, ...)
     return msg;
 }
 
