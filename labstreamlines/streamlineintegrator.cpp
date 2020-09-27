@@ -176,7 +176,7 @@ void StreamlineIntegrator::process() {
     std::vector<BasicMesh::Vertex> vertices;
 
     double stepSize = propStepSize.get();
-    int steps = propNumberSteps.get(), num_steps, msg;
+    int steps = propNumberSteps.get(), num_steps;
     dvec2 startingPoint = propStartPoint.get();
 
     if (propSeedMode.get() == 0) {
@@ -212,10 +212,10 @@ void StreamlineIntegrator::process() {
                     propNormalizedField.get(), propEulerColor.get(), propNumberSteps.get(),
                     propShowPoints.get()));
                 LogProcessorInfo(Integrator::RK4Loop(vectorField, startingPoint, mesh, vertices, num_steps,
-                                                     propStepSize.get(), propMinimumVelocity.get(),
-                                                     propMaximumArcLength.get(),
-                                                     propNormalizedField.get(), propRK4Color.get(),
-                                                     propNumberSteps.get(), propShowPoints.get()));
+                    propStepSize.get(), propMinimumVelocity.get(),
+                    propMaximumArcLength.get(),
+                    propNormalizedField.get(), propRK4Color.get(),
+                    propNumberSteps.get(), propShowPoints.get()));
             }
             if (propBackwardDirection.get()) {
                 LogProcessorInfo(Integrator::EulerLoop(

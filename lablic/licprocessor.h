@@ -60,6 +60,8 @@ protected:
 
     // (TODO: Helper functions can be defined here and then implemented in the .cpp)
     // e.g. something like a function for standardLIC, fastLIC, autoContrast, ...
+    std::string standardLIC(const VectorField2 &vectorField, const RGBAImage &inTex,
+                                   RGBAImage &outImg);
 
     // Ports
 public:

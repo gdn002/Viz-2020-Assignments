@@ -73,17 +73,40 @@ void LICProcessor::process() {
     std::vector<std::vector<int>> visited(texDims_.x, std::vector<int>(texDims_.y, 0));
     // TODO: Implement LIC and FastLIC
     // This code instead sets all pixels to the same gray value
+    //for (size_t j = 0; j < texDims_.y; j++) {
+    //    for (size_t i = 0; i < texDims_.x; i++) {
+    //        int val = int(licTexture[i][j]);
+    //        licImage.setPixel(size2_t(i, j), dvec4(val, val, val, 255));
+    //        // or
+    //        licImage.setPixelGrayScale(size2_t(i, j), val);
+    //    }
+    //}
 
-    for (size_t j = 0; j < texDims_.y; j++) {
-        for (size_t i = 0; i < texDims_.x; i++) {
-            int val = int(licTexture[i][j]);
-            licImage.setPixel(size2_t(i, j), dvec4(val, val, val, 255));
-            // or
-            licImage.setPixelGrayScale(size2_t(i, j), val);
-        }
-    }
+	standardLIC(vectorField, texture, licImage);
 
     licOut_.setData(outImage);
 }
+
+std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGBAImage& inTex,
+                                      RGBAImage& outImg) {
+    std::string msg;
+    auto mesh = std::make_shared<BasicMesh>();
+    std::vector<BasicMesh::Vertex> vertices;
+    int num_steps, L = 10;
+    for (size_t j = 0; j < texDims_.y; j++) {
+        for (size_t i = 0; i < texDims_.x; i++) {
+			
+			msg = Integrator::RK4Loop(vectorField, {i, j}, mesh, vertices, num_steps, 0.1f, 0.01f,
+                                      2.0f, true, {0, 0, 0, 255}, L);
+                
+                
+                
+        }
+    }
+        
+        
+        return msg;
+}
+
 
 }  // namespace inviwo
