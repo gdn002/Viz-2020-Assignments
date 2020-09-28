@@ -104,29 +104,21 @@ std::string Integrator::RK4line(const VectorField2& vectorField, const dvec2& st
 
     // Obtain the four intermediate points
     dvec2 v1 = vectorField.interpolate(start);
+    if (Magnitude(v1) == 0) return "Stopping integration due to zeros in the vector field.";
+    if (inverted) v1 *= -1;
+    if (normalize) v1 /= Magnitude(v1);
     dvec2 v2 = vectorField.interpolate(start + (v1 * (stepSize / 2)));
+    if (Magnitude(v2) == 0) return "Stopping integration due to zeros in the vector field.";
+    if (inverted) v2 *= -1;
+    if (normalize) v2 /= Magnitude(v2);
     dvec2 v3 = vectorField.interpolate(start + (v2 * (stepSize / 2)));
+    if (Magnitude(v3) == 0) return "Stopping integration due to zeros in the vector field.";
+    if (inverted) v3 *= -1;
+    if (normalize) v3 /= Magnitude(v3);
     dvec2 v4 = vectorField.interpolate(start + (v3 * stepSize));
-
-    if (Magnitude(v1) == 0) {
-        return "Stopping integration due to zeros in the vector field.";
-    }
-
-    // Invert the direction of the vectors
-    if (inverted) {
-        v1 *= -1;
-        v2 *= -1;
-        v3 *= -1;
-        v4 *= -1;
-    }
-
-    // Obtain normalized vectors
-    if (normalize) {
-        v1 /= Magnitude(v1);
-        v2 /= Magnitude(v2);
-        v3 /= Magnitude(v3);
-        v4 /= Magnitude(v4);
-    }
+    if (Magnitude(v4) == 0) return "Stopping integration due to zeros in the vector field.";
+    if (inverted) v4 *= -1;
+    if (normalize) v4 /= Magnitude(v4);
 
     // Divide the intermediate points according to the RK4 formula
     v1 /= 6;
