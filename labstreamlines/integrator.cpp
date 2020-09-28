@@ -243,19 +243,20 @@ std::string inviwo::Integrator::RK4LoopV2(const VectorField2& vectorField, const
     double arcLength = 0;
     for (stepsTaken = 1; stepsTaken <= kernelRadius; stepsTaken++) {
 
+			dvec2 next;
 		// Forward
         if (msgForward == "") {
-			dvec2 next;
             msgForward = RK4line(vectorField, currentForward, next, arcLength, stepSize,
                                  minVelocity, maxArchLength, normalize);
+            points.push_back(next);
             currentForward = next;
             points[kernelRadius + 1 + stepsTaken] = vectorField.interpolate(currentForward);
         }
         // Backward
         if (msgBackward == "") {
-            dvec2 next;
             msgBackward = RK4line(vectorField, currentForward, next, arcLength, stepSize,
                                  minVelocity, maxArchLength, normalize, true);
+            points.push_back(next);
             currentBackward = next;
             points[kernelRadius + 1 - stepsTaken] = vectorField.interpolate(currentBackward);
         }
