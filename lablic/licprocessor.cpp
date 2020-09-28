@@ -67,22 +67,22 @@ void LICProcessor::process() {
     auto outImage = std::make_shared<Image>(texDims_, DataVec4UInt8::get());
     RGBAImage licImage(outImage);
 
-    std::vector<std::vector<double>> licTexture(texDims_.x, std::vector<double>(texDims_.y, 0.0));
+    std::vector<std::vector<double>> licTexture(texDims_.x, std::vector<double>(texDims_.y, 100.0));
 
     // Hint: Output an image showing which pixels you have visited for debugging
     std::vector<std::vector<int>> visited(texDims_.x, std::vector<int>(texDims_.y, 0));
     // TODO: Implement LIC and FastLIC
     // This code instead sets all pixels to the same gray value
-    //for (size_t j = 0; j < texDims_.y; j++) {
-    //    for (size_t i = 0; i < texDims_.x; i++) {
-    //        int val = int(licTexture[i][j]);
-    //        licImage.setPixel(size2_t(i, j), dvec4(val, val, val, 255));
-    //        // or
-    //        licImage.setPixelGrayScale(size2_t(i, j), val);
-    //    }
-    //}
+    for (size_t j = 0; j < texDims_.y; j++) {
+        for (size_t i = 0; i < texDims_.x; i++) {
+            int val = int(licTexture[i][j]);
+            licImage.setPixel(size2_t(i, j), dvec4(val, val, val, 255));
+            // or
+            licImage.setPixelGrayScale(size2_t(i, j), val);
+        }
+    }
 
-	standardLIC(vectorField, texture, licImage);
+    standardLIC(vectorField, texture, licImage);
 
     licOut_.setData(outImage);
 }
@@ -93,16 +93,17 @@ std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGB
     auto mesh = std::make_shared<BasicMesh>();
     std::vector<BasicMesh::Vertex> vertices;
     int num_steps, L = 10;
-    for (size_t j = 0; j < texDims_.y; j++) {
-        for (size_t i = 0; i < texDims_.x; i++) {
+    //for (size_t j = 0; j < texDims_.y; j++) {
+        //for (size_t i = 0; i < texDims_.x; i++) {
 			
-			msg = Integrator::RK4Loop(vectorField, {i, j}, mesh, vertices, num_steps, 0.1f, 0.01f,
-                                      2.0f, true, {0, 0, 0, 255}, L);
+			msg = Integrator::RK4Loop(vectorField, {10, 10}, mesh, vertices, num_steps, 0.1f, 0.01f,
+                                      2.0f, true, {255, 255, 255, 255}, L);
+
                 
                 
                 
-        }
-    }
+        //}
+    //}
         
         
         return msg;
