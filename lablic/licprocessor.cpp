@@ -92,21 +92,22 @@ std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGB
     std::string msg;
     auto mesh = std::make_shared<BasicMesh>();
     std::vector<BasicMesh::Vertex> vertices;
+    std::vector<dvec2> points;
     int num_steps, L = 10;
-    //for (size_t j = 0; j < texDims_.y; j++) {
-        //for (size_t i = 0; i < texDims_.x; i++) {
-			
-			msg = Integrator::RK4Loop(vectorField, {10, 10}, mesh, vertices, num_steps, 0.1f, 0.01f,
+    double sum;
+    for (size_t j = 0; j < texDims_.y; j++) {
+      for (size_t i = 0; i < texDims_.x; i++) {
+        msg = Integrator::RK4LoopV2(vectorField, {i, j}, mesh, vertices, points, num_steps, 0.1f, 0.01f,
                                       2.0f, true, {255, 255, 255, 255}, L);
-
-                
-                
-                
-        //}
-    //}
-        
-        
-        return msg;
+        sum = 0.0f;
+        for (int k=0; i<points.size(); k++){
+          sum += inTex.readPixelGrayScale(points[k]);
+          sum /= points.size();
+        }
+        outImg.setPixelGrayScale(size2_t(i,j), sum);
+      }
+    }
+    return msg;
 }
 
 
