@@ -73,7 +73,7 @@ public:
                                std::vector<dvec2> &points, int& stepsTaken,
                                float stepSize, float minVelocity, float
                                maxArchLength, bool normalize, const vec4& color
-                               = {0, 0, 0, 255}, int steps = 1, bool showSteps
+                               = {0, 0, 0, 255}, const int kernelRadius = 1, bool showSteps
                                = false, bool inverted = false);
                                
 

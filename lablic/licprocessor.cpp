@@ -100,7 +100,7 @@ std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGB
         msg = Integrator::RK4LoopV2(vectorField, {i, j}, mesh, vertices, points, num_steps, 0.1f, 0.01f,
                                       2.0f, true, {255, 255, 255, 255}, L);
         sum = 0.0f;
-        for (int k=0; i<points.size(); k++){
+        for (int k=0; k<points.size(); k++){
           sum += inTex.readPixelGrayScale(points[k]);
           sum /= points.size();
         }

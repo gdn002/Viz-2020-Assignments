@@ -42,25 +42,26 @@ dvec2 Integrator::Euler(const VectorField2& vectorField, const dvec2& position,
     return position + Multiply(value, stepSize);
 }
 
-dvec2 Integrator::RK4(const VectorField2& vectorField, const dvec2& position, const float& stepSize) {
+dvec2 Integrator::RK4(const VectorField2& vectorField, const dvec2& position,
+                      const float& stepSize) {
     // Obtain the four intermediate points
-	dvec2 v1 = vectorField.interpolate(position);
+    dvec2 v1 = vectorField.interpolate(position);
     dvec2 v2 = vectorField.interpolate(position + Multiply(v1, stepSize / 2));
     dvec2 v3 = vectorField.interpolate(position + Multiply(v2, stepSize / 2));
     dvec2 v4 = vectorField.interpolate(position + Multiply(v3, stepSize));
-    
-	// Divide the intermediate points according to the RK4 formula
+
+    // Divide the intermediate points according to the RK4 formula
     v1 = Divide(v1, 6);
     v2 = Divide(v2, 3);
     v3 = Divide(v3, 3);
     v4 = Divide(v4, 6);
 
-	return position + Multiply((v1 + v2 + v3 + v4), stepSize);
+    return position + Multiply((v1 + v2 + v3 + v4), stepSize);
 }
 
 std::string Integrator::EulerLine(const VectorField2& vectorField, const dvec2& start, dvec2& end,
-                          double& arcLength, double stepSize, float minVelocity, float maxArchLength,
-                          bool normalize, bool inverted) {
+                                  double& arcLength, double stepSize, float minVelocity,
+                                  float maxArchLength, bool normalize, bool inverted) {
 
     // Interpolate vector field from our current point
     dvec2 vecValue = vectorField.interpolate(start);
@@ -97,8 +98,7 @@ std::string Integrator::EulerLine(const VectorField2& vectorField, const dvec2& 
 
 std::string Integrator::RK4line(const VectorField2& vectorField, const dvec2& start, dvec2& end,
                                 double& arcLength, double stepSize, float minVelocity,
-                                float maxArchLength, bool normalize, bool inverted)
-{
+                                float maxArchLength, bool normalize, bool inverted) {
     dvec2 bbmin = vectorField.getBBoxMin();
     dvec2 bbmax = vectorField.getBBoxMax();
 
@@ -147,10 +147,11 @@ std::string Integrator::RK4line(const VectorField2& vectorField, const dvec2& st
 }
 
 std::string Integrator::EulerLoop(const VectorField2& vectorField, const dvec2& start,
-                          std::shared_ptr<inviwo::BasicMesh>& mesh,
-                          std::vector<BasicMesh::Vertex>& vertices, int& stepsTaken, float stepSize,
-                          float minVelocity, float maxArchLength, bool normalize,
-                          const vec4& color, int steps, bool showSteps, bool inverted) {
+                                  std::shared_ptr<inviwo::BasicMesh>& mesh,
+                                  std::vector<BasicMesh::Vertex>& vertices, int& stepsTaken,
+                                  float stepSize, float minVelocity, float maxArchLength,
+                                  bool normalize, const vec4& color, int steps, bool showSteps,
+                                  bool inverted) {
     std::string msg = "";
     // Bypass entire function if the Euler color alpha is zero
     if (color.a == 0) return "";
@@ -166,14 +167,12 @@ std::string Integrator::EulerLoop(const VectorField2& vectorField, const dvec2& 
     for (stepsTaken = 0; stepsTaken < steps; stepsTaken++) {
 
         dvec2 next;
-        msg = EulerLine(vectorField, current, next, arcLength, stepSize, minVelocity,
-                             maxArchLength, normalize, inverted);
+        msg = EulerLine(vectorField, current, next, arcLength, stepSize, minVelocity, maxArchLength,
+                        normalize, inverted);
         if (msg != "") break;
 
-        drawLineSegment(current, next, color, indexBufferLine.get(),
-                                    vertices);
-        if (showSteps)
-            drawPoint(next, color, indexBufferPoints.get(), vertices);
+        drawLineSegment(current, next, color, indexBufferLine.get(), vertices);
+        if (showSteps) drawPoint(next, color, indexBufferPoints.get(), vertices);
         current = next;
     }
     return msg;
@@ -183,8 +182,8 @@ std::string Integrator::RK4Loop(const VectorField2& vectorField, const dvec2& st
                                 std::shared_ptr<inviwo::BasicMesh>& mesh,
                                 std::vector<BasicMesh::Vertex>& vertices, int& stepsTaken,
                                 float stepSize, float minVelocity, float maxArchLength,
-                                bool normalize, const vec4& color, int steps,
-                                bool showSteps, bool inverted) {
+                                bool normalize, const vec4& color, int steps, bool showSteps,
+                                bool inverted) {
     std::string msg = "";
     // Bypass entire function if the RK4 color alpha is zero
     if (color.a == 0) return "";
@@ -201,21 +200,75 @@ std::string Integrator::RK4Loop(const VectorField2& vectorField, const dvec2& st
 
         dvec2 next;
         msg = RK4line(vectorField, current, next, arcLength, stepSize, minVelocity, maxArchLength,
-                        normalize, inverted);
+                      normalize, inverted);
         if (msg != "") break;
 
-        Integrator::drawLineSegment(current, next, color, indexBufferLine.get(),
-                                    vertices);
-        if (showSteps)
-            Integrator::drawPoint(next, color, indexBufferPoints.get(), vertices);
+        Integrator::drawLineSegment(current, next, color, indexBufferLine.get(), vertices);
+        if (showSteps) Integrator::drawPoint(next, color, indexBufferPoints.get(), vertices);
         current = next;
     }
     return msg;
 }
 
+std::string inviwo::Integrator::RK4LoopV2(const VectorField2& vectorField, const dvec2& start,
+                                          std::shared_ptr<inviwo::BasicMesh>& mesh,
+                                          std::vector<BasicMesh::Vertex>& vertices,
+                                          std::vector<dvec2>& points, int& stepsTaken,
+                                          float stepSize, float minVelocity, float maxArchLength,
+                                          bool normalize, const vec4& color, const int kernelRadius,
+                                          bool showSteps, bool inverted) {
+    // TODO: Not all of these parameters are used for this function, function signature should be trimmed when possible
+	// All parameters related to rendering can be safely removed
+	// All parameters related to stop conditions should probably be replaced with set constants
+	// Inversion parameter is pointless since this function runs both directions regardless
+	// Normalize parameter is likely pointless since this function should always be run normalized anyway
 
-dvec2 Integrator::Multiply(const dvec2& vector, const float& factor) { 
-	dvec2 v = vector;
+	// NOTE: In the event of early termination, this function will leave the value of the corresponding kernel cells untouched
+	// This function should handle forward and backward stoppage independently
+
+	// Kernel radius is determined by the step count
+    points.clear();
+    points.resize((kernelRadius * 2) + 1);
+
+
+	// Center point of Kernel takes the start position
+    points[(kernelRadius + 1)] = vectorField.interpolate(start);
+
+    std::string msgForward = "";
+    std::string msgBackward = "";
+
+	// Integration runs both forward and backward
+    dvec2 currentForward = start;
+    dvec2 currentBackward = start;
+    double arcLength = 0;
+    for (stepsTaken = 1; stepsTaken <= kernelRadius; stepsTaken++) {
+
+		// Forward
+        if (msgForward == "") {
+			dvec2 next;
+            msgForward = RK4line(vectorField, currentForward, next, arcLength, stepSize,
+                                 minVelocity, maxArchLength, normalize);
+            currentForward = next;
+            points[kernelRadius + 1 + stepsTaken] = vectorField.interpolate(currentForward);
+        }
+        // Backward
+        if (msgBackward == "") {
+            dvec2 next;
+            msgBackward = RK4line(vectorField, currentForward, next, arcLength, stepSize,
+                                 minVelocity, maxArchLength, normalize, true);
+            currentBackward = next;
+            points[kernelRadius + 1 - stepsTaken] = vectorField.interpolate(currentBackward);
+        }
+    }
+
+	if (msgForward == "") msgForward = "Finished.";
+    if (msgBackward == "") msgBackward = "Finished.";
+
+    return "Forward: " + msgForward + "| Backward: " + msgBackward;
+}
+
+dvec2 Integrator::Multiply(const dvec2& vector, const float& factor) {
+    dvec2 v = vector;
     v.x *= factor;
     v.y *= factor;
     return v;
@@ -228,10 +281,8 @@ dvec2 Integrator::Divide(const dvec2& vector, const float& divisor) {
     return v;
 }
 
-double Integrator::Magnitude(const dvec2& vec) {
-    return sqrt(pow(vec.x, 2) + pow(vec.y, 2));
-}
+double Integrator::Magnitude(const dvec2& vec) { return sqrt(pow(vec.x, 2) + pow(vec.y, 2)); }
 
 // TASK 4.1 IMPLEMENTATION END
 
-} // namespace inviwo
+}  // namespace inviwo
