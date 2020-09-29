@@ -67,15 +67,9 @@ public:
                                float stepSize, float minVelocity, float maxArchLength,
                                bool normalize, const vec4& color = {0, 0, 0, 255}, int steps = 1,
                                bool showSteps = false, bool inverted = false);
-    static std::string RK4LoopV2(const VectorField2& vectorField, const dvec2& start,
-                               std::shared_ptr<inviwo::BasicMesh>& mesh,
-                               std::vector<BasicMesh::Vertex>& vertices,
-                               std::vector<dvec2> &points, int& stepsTaken,
-                               float stepSize, float minVelocity, float
-                               maxArchLength, bool normalize, const vec4& color
-                               = {0, 0, 0, 255}, const int kernelRadius = 1, bool showSteps
-                               = false, bool inverted = false);
-                               
+                              
+	static bool RK4Lite(const VectorField2& vectorField, const dvec2& start, dvec2& end,
+                               double stepSize, bool normalize, bool inverted);
 
     static dvec2 Multiply(const dvec2& vector, const float& factor);
     static dvec2 Divide(const dvec2& vector, const float& divisor);

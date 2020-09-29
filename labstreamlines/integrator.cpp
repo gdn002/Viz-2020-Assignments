@@ -210,62 +210,45 @@ std::string Integrator::RK4Loop(const VectorField2& vectorField, const dvec2& st
     return msg;
 }
 
-std::string inviwo::Integrator::RK4LoopV2(const VectorField2& vectorField, const dvec2& start,
-                                          std::shared_ptr<inviwo::BasicMesh>& mesh,
-                                          std::vector<BasicMesh::Vertex>& vertices,
-                                          std::vector<dvec2>& points, int& stepsTaken,
-                                          float stepSize, float minVelocity, float maxArchLength,
-                                          bool normalize, const vec4& color, const int kernelRadius,
-                                          bool showSteps, bool inverted) {
-    // TODO: Not all of these parameters are used for this function, function signature should be trimmed when possible
-	// All parameters related to rendering can be safely removed
-	// All parameters related to stop conditions should probably be replaced with set constants
-	// Inversion parameter is pointless since this function runs both directions regardless
-	// Normalize parameter is likely pointless since this function should always be run normalized anyway
+bool inviwo::Integrator::RK4Lite(const VectorField2& vectorField, const dvec2& start,
+                                        dvec2& end, double stepSize, bool normalize, bool inverted) {
+    end = start;
+	
+	dvec2 bbmin = vectorField.getBBoxMin();
+    dvec2 bbmax = vectorField.getBBoxMax();
 
-	// NOTE: In the event of early termination, this function will leave the value of the corresponding kernel cells untouched
-	// This function should handle forward and backward stoppage independently
+    // Obtain the four intermediate points
+    dvec2 v1 = vectorField.interpolate(start);
+    if (Magnitude(v1) == 0) return false;
+    if (inverted) v1 *= -1;
+    if (normalize) v1 /= Magnitude(v1);
+    dvec2 v2 = vectorField.interpolate(start + (v1 * (stepSize / 2)));
+    if (Magnitude(v2) == 0) return false;
+    if (inverted) v2 *= -1;
+    if (normalize) v2 /= Magnitude(v2);
+    dvec2 v3 = vectorField.interpolate(start + (v2 * (stepSize / 2)));
+    if (Magnitude(v3) == 0) return false;
+    if (inverted) v3 *= -1;
+    if (normalize) v3 /= Magnitude(v3);
+    dvec2 v4 = vectorField.interpolate(start + (v3 * stepSize));
+    if (Magnitude(v4) == 0) return false;
+    if (inverted) v4 *= -1;
+    if (normalize) v4 /= Magnitude(v4);
 
-	// Kernel radius is determined by the step count
-    points.clear();
-    points.resize((kernelRadius * 2) + 1);
+    // Divide the intermediate points according to the RK4 formula
+    v1 /= 6;
+    v2 /= 3;
+    v3 /= 3;
+    v4 /= 6;
 
+    // Obtain final vector
+    dvec2 vecValue = v1 + v2 + v3 + v4;
+    double vecNorm = Magnitude(vecValue);
 
-	// Center point of Kernel takes the start position
-    points[(kernelRadius + 1)] = vectorField.interpolate(start);
+    end = start + (stepSize * vecValue);
 
-    std::string msgForward = "";
-    std::string msgBackward = "";
-
-	// Integration runs both forward and backward
-    dvec2 currentForward = start;
-    dvec2 currentBackward = start;
-    double arcLength = 0;
-    for (stepsTaken = 1; stepsTaken <= kernelRadius; stepsTaken++) {
-
-			dvec2 next;
-		// Forward
-        if (msgForward == "") {
-            msgForward = RK4line(vectorField, currentForward, next, arcLength, stepSize,
-                                 minVelocity, maxArchLength, normalize);
-            points.push_back(next);
-            currentForward = next;
-            points[kernelRadius + 1 + stepsTaken] = vectorField.interpolate(currentForward);
-        }
-        // Backward
-        if (msgBackward == "") {
-            msgBackward = RK4line(vectorField, currentForward, next, arcLength, stepSize,
-                                 minVelocity, maxArchLength, normalize, true);
-            points.push_back(next);
-            currentBackward = next;
-            points[kernelRadius + 1 - stepsTaken] = vectorField.interpolate(currentBackward);
-        }
-    }
-
-	if (msgForward == "") msgForward = "Finished.";
-    if (msgBackward == "") msgBackward = "Finished.";
-
-    return "Forward: " + msgForward + "| Backward: " + msgBackward;
+	if (end.x < bbmin.x || end.x > bbmax.x || end.y < bbmin.y || end.y > bbmax.y) return false;
+	return true;
 }
 
 dvec2 Integrator::Multiply(const dvec2& vector, const float& factor) {

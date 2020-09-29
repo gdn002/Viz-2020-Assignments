@@ -71,45 +71,114 @@ void LICProcessor::process() {
 
     // Hint: Output an image showing which pixels you have visited for debugging
     std::vector<std::vector<int>> visited(texDims_.x, std::vector<int>(texDims_.y, 0));
-    // TODO: Implement LIC and FastLIC
-    // This code instead sets all pixels to the same gray value
-    for (size_t j = 0; j < texDims_.y; j++) {
-        for (size_t i = 0; i < texDims_.x; i++) {
-            int val = int(licTexture[i][j]);
-            licImage.setPixel(size2_t(i, j), dvec4(val, val, val, 255));
-            // or
-            licImage.setPixelGrayScale(size2_t(i, j), val);
-        }
-    }
 
-    standardLIC(vectorField, texture, licImage);
+	// LIC runs here
+    LogProcessorInfo(standardLIC(vectorField, texture, licImage));
 
     licOut_.setData(outImage);
 }
 
 std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGBAImage& inTex,
                                       RGBAImage& outImg) {
-    std::string msg;
-    auto mesh = std::make_shared<BasicMesh>();
-    std::vector<BasicMesh::Vertex> vertices;
-    std::vector<dvec2> points;
-    int num_steps, L = 10;
-    double sum;
-    for (size_t j = 0; j < texDims_.y; j++) {
-      for (size_t i = 0; i < texDims_.x; i++) {
-        msg = Integrator::RK4LoopV2(vectorField, {i, j}, mesh, vertices, points, num_steps, 0.1f, 0.01f,
-                                      2.0f, true, {255, 255, 255, 255}, L);
+    int steps = 40;
+    double stepSize = 0.01;
 
-        sum = 0.0f;
-        for (int k=0; k<points.size(); k++){
-          sum += inTex.readPixelGrayScale(size2_t(points[k].x, points[k].y));
-          sum /= points.size();
+    int counter;
+    double sum;
+
+	time_t startTime;
+    time(&startTime);
+
+    for (size_t j = 0; j < texDims_.y; j++) {
+        for (size_t i = 0; i < texDims_.x; i++) {
+
+            dvec2 gridCenter = PixelToGrid(vectorField, {i, j});
+
+            // Forward integration
+            std::vector<size2_t> forwardSteps;
+            dvec2 current = gridCenter;
+            for (int k = 0; k < steps; k++) {
+                dvec2 next;
+                if (!Integrator::RK4Lite(vectorField, current, next, stepSize, true, false)) break;
+                forwardSteps.push_back(GridToPixel(vectorField, next));
+                current = next;
+            }
+
+            // Backward integration
+            std::vector<size2_t> backwardSteps;
+            current = gridCenter;
+            for (int k = 0; k < steps; k++) {
+                dvec2 next;
+                if (!Integrator::RK4Lite(vectorField, current, next, stepSize, true, true)) break;
+                backwardSteps.push_back(GridToPixel(vectorField, next));
+                current = next;
+            }
+
+            // Sum all values from kernel
+
+            // Central pixel
+            counter = 1;
+            sum = inTex.readPixelGrayScale(size2_t(i, j));
+
+            // Forward pixels
+            for (int k = 0; k < forwardSteps.size(); k++) {
+                sum += inTex.readPixelGrayScale(forwardSteps[k]);
+                counter++;
+            }
+
+            // Backward pixels
+            for (int k = 0; k < backwardSteps.size(); k++) {
+                sum += inTex.readPixelGrayScale(backwardSteps[k]);
+                counter++;
+            }
+
+            if (counter > 1) {
+				sum /= counter; // Average grayscale values along the sampled pixels
+            } else {
+                sum = 0; // If only the center pixel was sampled, it means it is over a sink
+            }
+            outImg.setPixelGrayScale(size2_t(i, j), sum);
         }
-        outImg.setPixelGrayScale(size2_t(i,j), sum);
-      }
     }
-    return msg;
+
+	time_t endTime;
+    time(&endTime);
+
+    return "Standard LIC completed in " + toString(difftime(endTime, startTime)) + " seconds.";
 }
 
+dvec2 inviwo::LICProcessor::PixelToGrid(const VectorField2& vectorField, const size2_t& pixel) {
+    double relationX = (double)pixel.x / texDims_.x;
+    double relationY = (double)pixel.y / texDims_.y;
+
+    auto bBoxMin = vectorField.getBBoxMin();
+    auto bBoxMax = vectorField.getBBoxMax();
+
+    // For this I will assume pixels are counted Left-Right, Top-Bottom
+    double x = (bBoxMin.x * (1 - relationX)) + (bBoxMax.x * relationX);
+    double y = (bBoxMax.y * (1 - relationY)) + (bBoxMin.y * relationY);
+
+    return {x, y};
+}
+
+size2_t inviwo::LICProcessor::GridToPixel(const VectorField2& vectorField, const dvec2& grid) {
+    auto bBoxMin = vectorField.getBBoxMin();
+    auto bBoxMax = vectorField.getBBoxMax();
+
+    double relationX = (grid.x - bBoxMin.x) / (bBoxMax.x - bBoxMin.x);
+    double relationY = (grid.y - bBoxMin.y) / (bBoxMax.y - bBoxMin.y);
+
+    // For this I will assume pixels are counted Left-Right, Top-Bottom
+    double x = texDims_.x * relationX;
+    double y = texDims_.y * (1 - relationY);
+
+    // Clamp
+    if (x < 0) x = 0;
+    if (x >= texDims_.x) x = texDims_.x - 1;
+    if (y < 0) y = 0;
+    if (y >= texDims_.y) y = texDims_.y - 1;
+
+    return {x, y};
+}
 
 }  // namespace inviwo

@@ -63,6 +63,9 @@ protected:
     std::string standardLIC(const VectorField2 &vectorField, const RGBAImage &inTex,
                                    RGBAImage &outImg);
 
+	dvec2 PixelToGrid(const VectorField2 &vectorField, const size2_t &pixel);
+    size2_t GridToPixel(const VectorField2 &vectorField, const dvec2 &grid);
+
     // Ports
 public:
     // Input vector field
