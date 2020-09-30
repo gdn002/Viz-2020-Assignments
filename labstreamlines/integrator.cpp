@@ -212,7 +212,9 @@ std::string Integrator::RK4Loop(const VectorField2& vectorField, const dvec2& st
 
 bool inviwo::Integrator::RK4Lite(const VectorField2& vectorField, const dvec2& start,
                                         dvec2& end, double stepSize, bool normalize, bool inverted) {
-    end = start;
+    RK4CallCounter++;
+	
+	end = start;
 	
 	dvec2 bbmin = vectorField.getBBoxMin();
     dvec2 bbmax = vectorField.getBBoxMax();

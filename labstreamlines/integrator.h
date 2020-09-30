@@ -27,6 +27,8 @@ public:
     Integrator() {}
     virtual ~Integrator() = default;
 
+	inline static unsigned int RK4CallCounter;
+
     // Methods
 public:
     // Add a point to a mesh
