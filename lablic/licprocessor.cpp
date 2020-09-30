@@ -11,6 +11,8 @@
 #include <inviwo/core/datastructures/volume/volumeram.h>
 #include <lablic/licprocessor.h>
 #include <labstreamlines/integrator.h>
+#include <limits.h>
+#include <algorithm>
 
 namespace inviwo {
 
@@ -67,26 +69,103 @@ void LICProcessor::process() {
     auto outImage = std::make_shared<Image>(texDims_, DataVec4UInt8::get());
     RGBAImage licImage(outImage);
 
-    std::vector<std::vector<double>> licTexture(texDims_.x, std::vector<double>(texDims_.y, 100.0));
+    std::vector<std::vector<double>> licTexture(texDims_.x, std::vector<double>(texDims_.y, -1.0));
 
     // Hint: Output an image showing which pixels you have visited for debugging
     std::vector<std::vector<int>> visited(texDims_.x, std::vector<int>(texDims_.y, 0));
 
 	// LIC runs here
-    LogProcessorInfo(standardLIC(vectorField, texture, licImage));
+    //LogProcessorInfo(standardLIC(vectorField, texture, licImage));
+    LogProcessorInfo(fastLIC(vectorField, texture, licImage, licTexture, 50));
 
     licOut_.setData(outImage);
 }
 
+std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAImage& inTex,
+    RGBAImage& outImg, std::vector<std::vector<double>> &visited, int kernel_size) {
+
+    int steps = INT_MAX;
+    double stepSize = 0.001;
+
+    int counter;
+    double sum = 0.0;
+    
+    time_t startTime;
+    time(&startTime);
+
+    for (size_t j = 0; j < texDims_.y; j++) {
+        for (size_t i = 0; i < texDims_.x; i++) {
+
+          if(visited[i][j] == -1){
+            dvec2 gridCenter = PixelToGrid(vectorField, {i, j});
+
+            // Forward integration
+            std::vector<size2_t> forwardSteps;
+            dvec2 current = gridCenter;
+            forwardSteps.push_back(GridToPixel(vectorField, current)); //the center is at the beginning of the forward integration
+            for (int k = 0; k < steps; k++) {
+                dvec2 next;
+                if (!Integrator::RK4Lite(vectorField, current, next, stepSize, true, false)) break;
+                if (k%5==0)
+                  forwardSteps.push_back(GridToPixel(vectorField, next));
+                current = next;
+            }
+
+            // Backward integration
+            std::vector<size2_t> backwardSteps;
+            current = gridCenter;
+            for (int k = 0; k < steps; k++) {
+                dvec2 next;
+                if (!Integrator::RK4Lite(vectorField, current, next, stepSize, true, true)) break;
+                if (k%5==0)
+                  backwardSteps.push_back(GridToPixel(vectorField, next));
+                current = next;
+            }
+
+            //resort and merge the 2 vectors
+            std::reverse(backwardSteps.begin(),backwardSteps.end());
+            backwardSteps.reserve(backwardSteps.size()+forwardSteps.size());
+            backwardSteps.insert(backwardSteps.end(), forwardSteps.begin(), forwardSteps.end());
+
+            //iterators based on the kernel
+            std::vector<size2_t>::iterator k_start;
+            std::vector<size2_t>::iterator k_center = k_start+kernel_size/2;
+            std::vector<size2_t>::iterator k_end = k_start+kernel_size;
+
+            // calculate the first kernel
+            for (k_start = backwardSteps.begin(); k_start < k_end; k_start++) {
+              sum += inTex.readPixelGrayScale(*k_start);
+            }
+            visited[k_center->x][k_center->y] = sum/kernel_size;
+            outImg.setPixelGrayScale(size2_t(k_center->x, k_center->y), sum/kernel_size);
+            k_center++;
+            
+            // Iterate along the streamline
+            for (k_start = backwardSteps.begin(); k_end < backwardSteps.end()-1; k_start++, k_center++, k_end++) {
+              sum -= inTex.readPixelGrayScale(*k_start);
+              sum += inTex.readPixelGrayScale(*k_end);
+              visited[k_center->x][k_center->y] = sum/kernel_size;
+              outImg.setPixelGrayScale(size2_t(k_center->x, k_center->y), sum/kernel_size);
+            }
+          }
+        }
+
+    }
+
+	time_t endTime;
+    time(&endTime);
+
+    return "Standard LIC completed in " + toString(difftime(endTime, startTime)) + " seconds.";
+}
 std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGBAImage& inTex,
                                       RGBAImage& outImg) {
-    int steps = 40;
-    double stepSize = 0.01;
+    int steps = 50;
+    double stepSize = 0.001;
 
     int counter;
     double sum;
-
-	time_t startTime;
+    
+    time_t startTime;
     time(&startTime);
 
     for (size_t j = 0; j < texDims_.y; j++) {
@@ -100,7 +179,8 @@ std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGB
             for (int k = 0; k < steps; k++) {
                 dvec2 next;
                 if (!Integrator::RK4Lite(vectorField, current, next, stepSize, true, false)) break;
-                forwardSteps.push_back(GridToPixel(vectorField, next));
+                if (k%5==0)
+                  forwardSteps.push_back(GridToPixel(vectorField, next));
                 current = next;
             }
 
@@ -110,7 +190,8 @@ std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGB
             for (int k = 0; k < steps; k++) {
                 dvec2 next;
                 if (!Integrator::RK4Lite(vectorField, current, next, stepSize, true, true)) break;
-                backwardSteps.push_back(GridToPixel(vectorField, next));
+                if (k%5==0)
+                  backwardSteps.push_back(GridToPixel(vectorField, next));
                 current = next;
             }
 
@@ -133,7 +214,7 @@ std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGB
             }
 
             if (counter > 1) {
-				sum /= counter; // Average grayscale values along the sampled pixels
+                sum /= counter; // Average grayscale values along the sampled pixels
             } else {
                 sum = 0; // If only the center pixel was sampled, it means it is over a sink
             }
