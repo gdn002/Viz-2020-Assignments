@@ -83,12 +83,11 @@ std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGB
     int steps = 40;
     double stepSize = 0.01;
 
-    int counter;
-    double sum;
-
-	time_t startTime;
+    time_t startTime;
     time(&startTime);
 
+    #pragma omp parallel
+    #pragma omp for
     for (size_t j = 0; j < texDims_.y; j++) {
         for (size_t i = 0; i < texDims_.x; i++) {
 
@@ -117,8 +116,8 @@ std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGB
             // Sum all values from kernel
 
             // Central pixel
-            counter = 1;
-            sum = inTex.readPixelGrayScale(size2_t(i, j));
+            int counter = 1;
+            double sum = inTex.readPixelGrayScale(size2_t(i, j));
 
             // Forward pixels
             for (int k = 0; k < forwardSteps.size(); k++) {
@@ -133,7 +132,7 @@ std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGB
             }
 
             if (counter > 1) {
-				sum /= counter; // Average grayscale values along the sampled pixels
+                sum /= counter; // Average grayscale values along the sampled pixels
             } else {
                 sum = 0; // If only the center pixel was sampled, it means it is over a sink
             }
@@ -141,7 +140,7 @@ std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGB
         }
     }
 
-	time_t endTime;
+    time_t endTime;
     time(&endTime);
 
     return "Standard LIC completed in " + toString(difftime(endTime, startTime)) + " seconds.";
