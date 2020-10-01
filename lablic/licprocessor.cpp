@@ -86,7 +86,7 @@ std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAIma
                                   int kernel_size) {
     Integrator::RK4CallCounter = 0;
 
-    int steps = 40;
+    int steps = 20;
     double stepSize = 0.005;
 
     int counter;
@@ -182,10 +182,11 @@ std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAIma
 						dvec2 next;
 						if (Integrator::RK4Lite(vectorField, current, next, stepSize, true, false)) {
 							size2_t nextPixel = GridToPixel(vectorField, next);
-							if (nextPixel == forwardSteps.back()) break; // Prevent from getting stuck in a sink
-							forwardSteps.push_back(nextPixel);
-							sum += inTex.readPixelGrayScale(forwardSteps.back());
-							counter++;
+							if (nextPixel != forwardSteps.back()) { // Prevent from getting stuck in a sink
+								forwardSteps.push_back(nextPixel);
+								sum += inTex.readPixelGrayScale(nextPixel);
+								counter++;
+							}
 						}
                     }
 
