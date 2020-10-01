@@ -67,7 +67,8 @@ protected:
     std::string fastLIC(const VectorField2 &vectorField, const RGBAImage &inTex,
                                    RGBAImage &outImg);
 
-    void enhanceContrast(RGBAImage& img);
+    void enhanceContrast(RGBAImage& img, const float& desiredMu,
+                         const float& desiredSigma);
     void applyColor(const VectorField2 &vectorField, RGBAImage &img);
 
     dvec2 PixelToGrid(const VectorField2 &vectorField, const size2_t &pixel);
@@ -91,7 +92,7 @@ public:
     IntProperty propKernelRadius;
     DoubleProperty propStepSize;
     BoolProperty propEnhancedContrast;
-    FloatProperty propDesiredMean;
+    FloatProperty propDesiredMu;
     FloatProperty propDesiredSigma;
     TemplateOptionProperty<int> propLICType;
     BoolProperty propInvalidate;

@@ -36,7 +36,7 @@ LICProcessor::LICProcessor()
     , propKernelRadius("kernelRadius", "Kernel Radius", 40, 1, 100, 1)
     , propStepSize("stepSize", "Step Size", 0.003, 0.001, 0.01, 0.001)
     , propEnhancedContrast("enhancedContrast", "Enhanced Contrast", true)
-    , propDesiredMean("desiredMean", "Desired Mean", 0.5f, 0, 1.0f, 0.1f)
+    , propDesiredMu("desiredMu", "Desired Mean", 0.5f, 0, 1.0f, 0.1f)
     , propDesiredSigma("desiredSigma", "Desired Standard Deviation", 0.1f, 0, 1.0f, 0.05f)
     , propLICType("LICType", "LIC Type")
     , propInvalidate("invalidate", "Render", false)
@@ -51,7 +51,7 @@ LICProcessor::LICProcessor()
     addProperty(propKernelRadius);
     addProperty(propStepSize);
     addProperty(propEnhancedContrast);
-    addProperty(propDesiredMean);
+    addProperty(propDesiredMu);
     addProperty(propDesiredSigma);
     addProperty(propLICType);
     addProperty(propInvalidate);
@@ -104,7 +104,7 @@ void LICProcessor::process() {
     }
 
     if (propEnhancedContrast.get()) {
-        enhanceContrast(licImage);
+        enhanceContrast(licImage, propDesiredMu.get(), propDesiredSigma.get());
     }
     if (propColoredTexture.get()) {
         applyColor(vectorField, licImage);
@@ -409,7 +409,8 @@ std::string LICProcessor::parallelLIC(const VectorField2& vectorField, const RGB
            " seconds, with " + toString((unsigned long)Integrator::RK4CallCounter) + " RK4 calls.";
 }
 
-void inviwo::LICProcessor::enhanceContrast(RGBAImage& img) {
+void inviwo::LICProcessor::enhanceContrast(RGBAImage& img, const float& desiredMu,
+                                           const float& desiredSigma) {
     int pixelCounter = 0;
     double pixelSum = 0.0, pixelSqrSum = 0.0;
 
@@ -432,8 +433,7 @@ void inviwo::LICProcessor::enhanceContrast(RGBAImage& img) {
     double sigma = sqrt((pixelSqrSum - pixelCounter*pow(mu, 2)) /
                         ((double)pixelCounter - 1));
 
-    double desiredMu = propDesiredMean.get();
-    double stretchFactor = propDesiredSigma.get() / sigma;
+    double stretchFactor = desiredSigma / sigma;
     LogProcessorInfo("mu: " << mu << ", sigma: " << sigma);
     LogProcessorInfo("Stretch factor: " << stretchFactor);
 
