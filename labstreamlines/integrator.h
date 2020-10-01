@@ -27,6 +27,8 @@ public:
     Integrator() {}
     virtual ~Integrator() = default;
 
+	inline static std::atomic_ulong RK4CallCounter;
+
     // Methods
 public:
     // Add a point to a mesh

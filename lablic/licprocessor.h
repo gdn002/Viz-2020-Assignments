@@ -63,8 +63,12 @@ protected:
     // e.g. something like a function for standardLIC, fastLIC, autoContrast, ...
     std::string standardLIC(const VectorField2 &vectorField, const RGBAImage &inTex,
                                    RGBAImage &outImg);
+    std::string parallelLIC(const VectorField2 &vectorField, const RGBAImage &inTex,
+                            RGBAImage &outImg);
     std::string fastLIC(const VectorField2 &vectorField, const RGBAImage &inTex,
-                                   RGBAImage &outImg, std::vector<std::vector<double>> &visited, int kernel_size);
+                                   RGBAImage &outImg);
+
+	void applyColor(const VectorField2 &vectorField, RGBAImage &img);
 
     dvec2 PixelToGrid(const VectorField2 &vectorField, const size2_t &pixel);
     size2_t GridToPixel(const VectorField2 &vectorField, const dvec2 &grid);
@@ -83,7 +87,11 @@ public:
     // Properties
 public:
     // Declare properties
-    BoolProperty propColoredTexture;
+	BoolProperty propColoredTexture;
+    IntProperty propKernelRadius;
+    DoubleProperty propStepSize;
+    TemplateOptionProperty<int> propLICType;
+    BoolProperty propInvalidate;
 
     // Attributes
 private:
