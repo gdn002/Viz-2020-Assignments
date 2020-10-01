@@ -32,7 +32,10 @@ LICProcessor::LICProcessor()
     , volumeIn_("volIn")
     , noiseTexIn_("noiseTexIn")
     , licOut_("licOut")
-// TODO: Register additional properties
+    , propKernelRadius("kernelRadius", "Kernel Radius", 40, 1, 100, 1)
+    , propStepSize("stepSize", "Step Size", 0.003, 0.001, 0.01, 0.001)
+    , propLICType("LICType", "LIC Type")
+    , propInvalidate("invalidate", "Render", false) 
 {
     // Register ports
     addPort(volumeIn_);
@@ -40,7 +43,14 @@ LICProcessor::LICProcessor()
     addPort(licOut_);
 
     // Register properties
-    // TODO: Register additional properties
+    addProperty(propKernelRadius);
+    addProperty(propStepSize);
+    addProperty(propLICType);
+    addProperty(propInvalidate);
+
+	propLICType.addOption("standard", "Standard", 0);
+    propLICType.addOption("fast", "Fast", 1);
+    propLICType.addOption("parallel", "Parallel", 2);
 }
 
 void LICProcessor::process() {
@@ -53,6 +63,8 @@ void LICProcessor::process() {
         return;
     }
 
+	if (!propInvalidate.get()) return;
+
     auto vol = volumeIn_.getData();
     const VectorField2 vectorField = VectorField2::createFieldFromVolume(vol);
     vectorFieldDims_ = vol->getDimensions();
@@ -61,18 +73,26 @@ void LICProcessor::process() {
     const RGBAImage texture = RGBAImage::createFromImage(tex);
     texDims_ = tex->getDimensions();
 
-    double value = texture.readPixelGrayScale(size2_t(0, 0));
-
-    LogProcessorInfo(value);
+    LogProcessorInfo("LIC rendering started...");
 
     // Prepare the output, it has the same dimensions as the texture and rgba values in [0,255]
     auto outImage = std::make_shared<Image>(texDims_, DataVec4UInt8::get());
     RGBAImage licImage(outImage);
 
     // LIC runs here
-    LogProcessorInfo(standardLIC(vectorField, texture, licImage));
-    //LogProcessorInfo(parallelLIC(vectorField, texture, licImage));
-    //LogProcessorInfo(fastLIC(vectorField, texture, licImage));
+
+	switch (propLICType.get()) {
+        case 0:
+			LogProcessorInfo(standardLIC(vectorField, texture, licImage));
+            break;
+        case 1:
+            LogProcessorInfo(fastLIC(vectorField, texture, licImage));
+            break;
+        case 2:
+            LogProcessorInfo(parallelLIC(vectorField, texture, licImage));
+            break;
+    }
+    propInvalidate.set(false);
 
     licOut_.setData(outImage);
 }
@@ -81,8 +101,8 @@ std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAIma
                                   RGBAImage& outImg) {
     Integrator::RK4CallCounter = 0;
 
-    int steps = 60;
-    double stepSize = 0.003;
+    const int steps = propKernelRadius.get();
+    const double stepSize = propStepSize.get();
 
     int counter;
     double sum;
@@ -211,16 +231,15 @@ std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAIma
     time(&endTime);
 
     return "Fast LIC completed in " + toString(difftime(endTime, startTime)) + " seconds, with " 
-		+ toString(Integrator::RK4CallCounter) + " RK4 calls and " + toString(skipCount) + " skips.";
+		+ toString((unsigned long)Integrator::RK4CallCounter) + " RK4 calls and " + toString(skipCount) + " skips.";
 }
 
 std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGBAImage& inTex,
                                       RGBAImage& outImg) {
-
     Integrator::RK4CallCounter = 0;
 
-    int steps = 60;
-    double stepSize = 0.003;
+    const int steps = propKernelRadius.get();
+    const double stepSize = propStepSize.get();
 
     int counter;
     double sum;
@@ -292,13 +311,15 @@ std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGB
     time(&endTime);
 
     return "Standard LIC completed in " + toString(difftime(endTime, startTime)) + " seconds, with " +
-           toString(Integrator::RK4CallCounter) + " RK4 calls.";
+           toString((unsigned long)Integrator::RK4CallCounter) + " RK4 calls.";
 }
 
 std::string LICProcessor::parallelLIC(const VectorField2& vectorField, const RGBAImage& inTex,
                                       RGBAImage& outImg) {
-    int steps = 60;
-    double stepSize = 0.008;
+    Integrator::RK4CallCounter = 0;
+	
+	const int steps = propKernelRadius.get();
+    const double stepSize = propStepSize.get();
 
     int counter;
     double sum;
@@ -363,8 +384,8 @@ std::string LICProcessor::parallelLIC(const VectorField2& vectorField, const RGB
     time_t endTime;
     time(&endTime);
 
-	// RK4 counter is not thread-safe, so this information is ommited here
-    return "Parallel LIC completed in " + toString(difftime(endTime, startTime)) + ".";
+	return "Parallel LIC completed in " + toString(difftime(endTime, startTime)) + " seconds, with " +
+           toString((unsigned long)Integrator::RK4CallCounter) + " RK4 calls.";
 }
 
 dvec2 inviwo::LICProcessor::PixelToGrid(const VectorField2& vectorField, const size2_t& pixel) {

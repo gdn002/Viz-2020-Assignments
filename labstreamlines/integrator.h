@@ -27,7 +27,7 @@ public:
     Integrator() {}
     virtual ~Integrator() = default;
 
-	inline static unsigned int RK4CallCounter;
+	inline static std::atomic_ulong RK4CallCounter;
 
     // Methods
 public:
