@@ -116,18 +116,19 @@ std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAIma
     int counter;
     double sum;
 
-	unsigned int skipCount = 0;
+    unsigned int skipCount = 0;
 
     time_t startTime;
     time(&startTime);
 
-	dvec2 gridCenter;
+    dvec2 gridCenter;
     dvec2 current;
 
     std::list<size2_t> forwardSteps;
     std::list<size2_t> backwardSteps;
 
-    std::vector<std::vector<unsigned char>> buffer(texDims_.x, std::vector<unsigned char>(texDims_.y, 0));
+    std::vector<std::vector<unsigned char>> buffer(texDims_.x,
+                                                   std::vector<unsigned char>(texDims_.y, 0));
 
     for (size_t j = 0; j < texDims_.y; j++) {
         for (size_t i = 0; i < texDims_.x; i++) {
@@ -148,7 +149,8 @@ std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAIma
                     current = next;
                 }
 
-				// Forward integration (done in this order because we need to keep the last "current" value)
+                // Forward integration (done in this order because we need to keep the last
+                // "current" value)
                 forwardSteps.clear();
                 current = gridCenter;
                 for (int k = 0; k < steps; k++) {
@@ -180,14 +182,14 @@ std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAIma
                 if (counter == 1) {
                     sum = 0;  // If only the center pixel was sampled, it means it is over a sink
                 }
-                
-				// Average grayscale values along the sampled pixels
-                outImg.setPixelGrayScale(size2_t(i, j), sum / counter);
 
-				// Mark as visited
+                // Average grayscale values along the sampled pixels
+                outImg.setPixelGrayScale(center, sum / counter);
+
+                // Mark as visited
                 buffer[center.x][center.y] = 1;
 
-				bool reachedEnd = false;
+                bool reachedEnd = false;
 
                 // Begin iterating forward
                 while (!forwardSteps.empty()) {
@@ -206,29 +208,31 @@ std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAIma
                     center = forwardSteps.front();
                     forwardSteps.pop_front();
 
-					// Check for loops
+                    // Check for loops
                     if (buffer[center.x][center.y] != 0) {
                         skipCount++;
                         break;
                     }
 
-					// Integrate next step and put at end of forward vector (if there is a next step)
+                    // Integrate next step and put at end of forward vector (if there is a next
+                    // step)
                     if (!reachedEnd) {
                         dvec2 next;
-						if (Integrator::RK4Lite(vectorField, current, next, stepSize, true, false)) {
-							forwardSteps.push_back(GridToPixel(vectorField, next));
-							sum += inTex.readPixelGrayScale(forwardSteps.back());
-							current = next;
-							counter++;
-						}
-						else {
-							reachedEnd = true; // No more forward steps possible, let forward list run empty
-						}
+                        if (Integrator::RK4Lite(vectorField, current, next, stepSize, true,
+                                                false)) {
+                            forwardSteps.push_back(GridToPixel(vectorField, next));
+                            sum += inTex.readPixelGrayScale(forwardSteps.back());
+                            current = next;
+                            counter++;
+                        } else {
+                            reachedEnd =
+                                true;  // No more forward steps possible, let forward list run empty
+                        }
                     }
 
-					// Recalculate the average for the new center pixel based on the new kernel values and mark it as visited
-					outImg.setPixelGrayScale(size2_t(i, j), sum / counter);
-
+                    // Recalculate the average for the new center pixel based on the new kernel
+                    // values and mark it as visited
+                    outImg.setPixelGrayScale(center, sum / counter);
                     buffer[center.x][center.y] = 1;
                 }
             } else {
@@ -240,8 +244,9 @@ std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAIma
     time_t endTime;
     time(&endTime);
 
-    return "Fast LIC completed in " + toString(difftime(endTime, startTime)) + " seconds, with " 
-		+ toString((unsigned long)Integrator::RK4CallCounter) + " RK4 calls and " + toString(skipCount) + " skips.";
+    return "Fast LIC completed in " + toString(difftime(endTime, startTime)) + " seconds, with " +
+           toString((unsigned long)Integrator::RK4CallCounter) + " RK4 calls and " +
+           toString(skipCount) + " skips.";
 }
 
 std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGBAImage& inTex,
@@ -254,12 +259,12 @@ std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGB
     int counter;
     double sum;
 
-	dvec2 current;
+    dvec2 current;
 
-	std::vector<size2_t> forwardSteps;
+    std::vector<size2_t> forwardSteps;
     std::vector<size2_t> backwardSteps;
 
-	forwardSteps.reserve(steps);
+    forwardSteps.reserve(steps);
     backwardSteps.reserve(steps);
 
     time_t startTime;
@@ -301,7 +306,8 @@ std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGB
                 sum += inTex.readPixelGrayScale(forwardSteps[k]);
                 counter++;
             }
-			// Backward pixels
+
+            // Backward pixels
             for (int k = 0; k < backwardSteps.size(); k++) {
                 sum += inTex.readPixelGrayScale(backwardSteps[k]);
                 counter++;
@@ -312,30 +318,32 @@ std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGB
             } else {
                 sum = 0;  // If only the center pixel was sampled, it means it is over a sink
             }
-            
-			outImg.setPixelGrayScale(size2_t(i, j), sum);
+            outImg.setPixelGrayScale(size2_t(i, j), sum);
         }
     }
 
     time_t endTime;
     time(&endTime);
 
-    return "Standard LIC completed in " + toString(difftime(endTime, startTime)) + " seconds, with " +
-           toString((unsigned long)Integrator::RK4CallCounter) + " RK4 calls.";
+    return "Standard LIC completed in " + toString(difftime(endTime, startTime)) +
+           " seconds, with " + toString((unsigned long)Integrator::RK4CallCounter) + " RK4 calls.";
 }
 
 std::string LICProcessor::parallelLIC(const VectorField2& vectorField, const RGBAImage& inTex,
                                       RGBAImage& outImg) {
     Integrator::RK4CallCounter = 0;
-	
-	const int steps = propKernelRadius.get();
+
+    const int steps = propKernelRadius.get();
     const double stepSize = propStepSize.get();
+
+    int counter;
+    double sum;
 
     time_t startTime;
     time(&startTime);
 
-    #pragma omp parallel
-    #pragma omp for
+#pragma omp parallel
+#pragma omp for
     for (size_t j = 0; j < texDims_.y; j++) {
         for (size_t i = 0; i < texDims_.x; i++) {
 
@@ -384,7 +392,6 @@ std::string LICProcessor::parallelLIC(const VectorField2& vectorField, const RGB
             } else {
                 sum = 0;  // If only the center pixel was sampled, it means it is over a sink
             }
-
             outImg.setPixelGrayScale(size2_t(i, j), sum);
         }
     }
@@ -392,8 +399,8 @@ std::string LICProcessor::parallelLIC(const VectorField2& vectorField, const RGB
     time_t endTime;
     time(&endTime);
 
-	return "Parallel LIC completed in " + toString(difftime(endTime, startTime)) + " seconds, with " +
-           toString((unsigned long)Integrator::RK4CallCounter) + " RK4 calls.";
+    return "Parallel LIC completed in " + toString(difftime(endTime, startTime)) +
+           " seconds, with " + toString((unsigned long)Integrator::RK4CallCounter) + " RK4 calls.";
 }
 
 void inviwo::LICProcessor::applyColor(const VectorField2& vectorField, RGBAImage& img) {
