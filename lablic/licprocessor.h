@@ -17,6 +17,7 @@
 #include <inviwo/core/processors/processor.h>
 #include <inviwo/core/properties/boolproperty.h>
 #include <inviwo/core/properties/ordinalproperty.h>
+#include <inviwo/core/util/colorconversion.h>
 #include <lablic/lablicmoduledefine.h>
 #include <labutils/scalarvectorfield.h>
 #include <labutils/rgbaimage.h>
@@ -81,9 +82,8 @@ public:
 
     // Properties
 public:
-    // TODO: Declare properties
-    // IntProperty prop1;
-    // BoolProperty prop2;
+    // Declare properties
+    BoolProperty propColoredTexture;
 
     // Attributes
 private:

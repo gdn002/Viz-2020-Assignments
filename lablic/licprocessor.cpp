@@ -32,6 +32,7 @@ LICProcessor::LICProcessor()
     , volumeIn_("volIn")
     , noiseTexIn_("noiseTexIn")
     , licOut_("licOut")
+    , propColoredTexture("coloredTexture", "Colored Texture", true)
 // TODO: Register additional properties
 {
     // Register ports
@@ -40,7 +41,7 @@ LICProcessor::LICProcessor()
     addPort(licOut_);
 
     // Register properties
-    // TODO: Register additional properties
+    addProperty(propColoredTexture);
 }
 
 void LICProcessor::process() {
@@ -74,9 +75,9 @@ void LICProcessor::process() {
     // Hint: Output an image showing which pixels you have visited for debugging
     std::vector<std::vector<int>> visited(texDims_.x, std::vector<int>(texDims_.y, 0));
 
-	// LIC runs here
-    //LogProcessorInfo(standardLIC(vectorField, texture, licImage));
-    LogProcessorInfo(fastLIC(vectorField, texture, licImage, licTexture, 50));
+    // LIC runs here
+    LogProcessorInfo(standardLIC(vectorField, texture, licImage));
+    //LogProcessorInfo(fastLIC(vectorField, texture, licImage, licTexture, 50));
 
     licOut_.setData(outImage);
 }
@@ -89,7 +90,7 @@ std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAIma
 
     int counter;
     double sum = 0.0;
-    
+
     time_t startTime;
     time(&startTime);
 
@@ -139,7 +140,7 @@ std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAIma
             visited[k_center->x][k_center->y] = sum/kernel_size;
             outImg.setPixelGrayScale(size2_t(k_center->x, k_center->y), sum/kernel_size);
             k_center++;
-            
+
             // Iterate along the streamline
             for (k_start = backwardSteps.begin(); k_end < backwardSteps.end()-1; k_start++, k_center++, k_end++) {
               sum -= inTex.readPixelGrayScale(*k_start);
@@ -152,7 +153,7 @@ std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAIma
 
     }
 
-	time_t endTime;
+    time_t endTime;
     time(&endTime);
 
     return "Standard LIC completed in " + toString(difftime(endTime, startTime)) + " seconds.";
@@ -162,11 +163,25 @@ std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGB
     int steps = 50;
     double stepSize = 0.001;
 
-    int counter;
-    double sum;
-    
     time_t startTime;
     time(&startTime);
+
+    double minVecNorm = DBL_MAX, maxVecNorm = 0.0;
+
+    if (propColoredTexture.get()) {
+        for (size_t j = 0; j < texDims_.y; j++) {
+            for (size_t i = 0; i < texDims_.x; i++) {
+                dvec2 gridCenter = PixelToGrid(vectorField, {i, j});
+                dvec2 vecValue = vectorField.interpolate(gridCenter);
+
+                // Store the minimum/maximum vector length along the sampled points
+                double vecNorm = Integrator::Magnitude(vecValue);
+                if (vecNorm < minVecNorm) minVecNorm = vecNorm;
+                if (vecNorm > maxVecNorm) maxVecNorm = vecNorm;
+            }
+        }
+        LogProcessorInfo("minVecNorm: " << minVecNorm << " , maxVecNorm: " << maxVecNorm);
+    }
 
     #pragma omp parallel
     #pragma omp for
@@ -220,7 +235,22 @@ std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGB
             } else {
                 sum = 0; // If only the center pixel was sampled, it means it is over a sink
             }
-            outImg.setPixelGrayScale(size2_t(i, j), sum);
+
+            if (!propColoredTexture.get()) {
+                outImg.setPixelGrayScale(size2_t(i, j), sum);
+            } else {
+                dvec2 vecValue = vectorField.interpolate(gridCenter);
+                double vecNorm = Integrator::Magnitude(vecValue);
+
+                // Compute the rainbow color table based on the HSV color scheme
+                // The vector magnitude encodes the hue, the grayscale pixel the value
+                double hue = (vecNorm-minVecNorm) / (maxVecNorm-minVecNorm);
+                double value = sum / 255;
+
+                // Convert the HSV color in [0-1]^3 to RGB in the domain [0-255]^3
+                vec3 rgb = color::hsv2rgb(vec3(hue, 1.0, value));
+                outImg.setPixel(size2_t(i, j), 255*vec4(rgb.r, rgb.g, rgb.b, 1.0));
+            }
         }
     }
 
