@@ -35,11 +35,11 @@ LICProcessor::LICProcessor()
     , propColoredTexture("coloredTexture", "Colored Texture", false)
     , propKernelRadius("kernelRadius", "Kernel Radius", 40, 1, 100, 1)
     , propStepSize("stepSize", "Step Size", 0.003, 0.001, 0.01, 0.001)
+    , propEnhancedContrast("enhancedContrast", "Enhanced Contrast", true)
+    , propDesiredMean("desiredMean", "Desired Mean", 0.5f, 0, 1.0f, 0.1f)
+    , propDesiredSigma("desiredSigma", "Desired Standard Deviation", 0.1f, 0, 1.0f, 0.05f)
     , propLICType("LICType", "LIC Type")
     , propInvalidate("invalidate", "Render", false)
-    , propEnhancedConstrast("enhancedConstrast", "Enhanced Constrast", true)
-    , propDesiredMean("desiredMean", "Adjusted Mean", 0.5f, 0, 1.0f, 0.1f)
-    , propDesiredSigma("desiredSigma", "Adjusted Standard Deviation", 0.1f, 0, 1.0f, 0.05f)
 {
     // Register ports
     addPort(volumeIn_);
@@ -50,11 +50,11 @@ LICProcessor::LICProcessor()
     addProperty(propColoredTexture);
     addProperty(propKernelRadius);
     addProperty(propStepSize);
-    addProperty(propLICType);
-    addProperty(propInvalidate);
-    addProperty(propEnhancedConstrast);
+    addProperty(propEnhancedContrast);
     addProperty(propDesiredMean);
     addProperty(propDesiredSigma);
+    addProperty(propLICType);
+    addProperty(propInvalidate);
 
     propLICType.addOption("standard", "Standard", 0);
     propLICType.addOption("fast", "Fast", 1);
@@ -103,11 +103,11 @@ void LICProcessor::process() {
             break;
     }
 
+    if (propEnhancedContrast.get()) {
+        enhanceContrast(licImage);
+    }
     if (propColoredTexture.get()) {
         applyColor(vectorField, licImage);
-    }
-    if (propEnhancedConstrast.get()) {
-        enhanceConstrast(licImage);
     }
 
     propInvalidate.set(false);
@@ -409,42 +409,7 @@ std::string LICProcessor::parallelLIC(const VectorField2& vectorField, const RGB
            " seconds, with " + toString((unsigned long)Integrator::RK4CallCounter) + " RK4 calls.";
 }
 
-void inviwo::LICProcessor::applyColor(const VectorField2& vectorField, RGBAImage& img) {
-
-    double minVecNorm = DBL_MAX, maxVecNorm = 0.0;
-    for (size_t j = 0; j < texDims_.y; j++) {
-        for (size_t i = 0; i < texDims_.x; i++) {
-            dvec2 gridCenter = PixelToGrid(vectorField, {i, j});
-            dvec2 vecValue = vectorField.interpolate(gridCenter);
-
-            // Store the minimum/maximum vector length along the sampled points
-            double vecNorm = Integrator::Magnitude(vecValue);
-            if (vecNorm < minVecNorm) minVecNorm = vecNorm;
-            if (vecNorm > maxVecNorm) maxVecNorm = vecNorm;
-        }
-    }
-    LogProcessorInfo("minVecNorm: " << minVecNorm << " , maxVecNorm: " << maxVecNorm);
-
-    for (size_t j = 0; j < texDims_.y; j++) {
-        for (size_t i = 0; i < texDims_.x; i++) {
-            size2_t pixel = {i, j};
-
-            dvec2 vecValue = vectorField.interpolate(PixelToGrid(vectorField, pixel));
-            double vecNorm = Integrator::Magnitude(vecValue);
-
-            // Compute the rainbow color table based on the HSV color scheme
-            // The vector magnitude encodes the hue, the grayscale pixel the value
-            double hue = (vecNorm - minVecNorm) / (maxVecNorm - minVecNorm);
-            double value = img.readPixelGrayScale(pixel) / 255;
-
-            // Convert the HSV color in [0-1]^3 to RGB in the domain [0-255]^3
-            vec3 rgb = color::hsv2rgb(vec3(hue, 1.0, value));
-            img.setPixel(pixel, 255 * vec4(rgb.r, rgb.g, rgb.b, 1.0));
-        }
-    }
-}
-
-void inviwo::LICProcessor::enhanceConstrast(RGBAImage& img) {
+void inviwo::LICProcessor::enhanceContrast(RGBAImage& img) {
     int pixelCounter = 0;
     double pixelSum = 0.0, pixelSqrSum = 0.0;
 
@@ -478,6 +443,41 @@ void inviwo::LICProcessor::enhanceConstrast(RGBAImage& img) {
             double oldValue = img.readPixelGrayScale(size2_t(i, j)) / 255;
             double newValue = desiredMu + stretchFactor * (oldValue - mu);
             img.setPixelGrayScale(size2_t(i, j), newValue * 255);
+        }
+    }
+}
+
+void inviwo::LICProcessor::applyColor(const VectorField2& vectorField, RGBAImage& img) {
+
+    double minVecNorm = DBL_MAX, maxVecNorm = 0.0;
+    for (size_t j = 0; j < texDims_.y; j++) {
+        for (size_t i = 0; i < texDims_.x; i++) {
+            dvec2 gridCenter = PixelToGrid(vectorField, {i, j});
+            dvec2 vecValue = vectorField.interpolate(gridCenter);
+
+            // Store the minimum/maximum vector length along the sampled points
+            double vecNorm = Integrator::Magnitude(vecValue);
+            if (vecNorm < minVecNorm) minVecNorm = vecNorm;
+            if (vecNorm > maxVecNorm) maxVecNorm = vecNorm;
+        }
+    }
+    LogProcessorInfo("minVecNorm: " << minVecNorm << " , maxVecNorm: " << maxVecNorm);
+
+    for (size_t j = 0; j < texDims_.y; j++) {
+        for (size_t i = 0; i < texDims_.x; i++) {
+            size2_t pixel = {i, j};
+
+            dvec2 vecValue = vectorField.interpolate(PixelToGrid(vectorField, pixel));
+            double vecNorm = Integrator::Magnitude(vecValue);
+
+            // Compute the rainbow color table based on the HSV color scheme
+            // The vector magnitude encodes the hue, the grayscale pixel the value
+            double hue = (vecNorm - minVecNorm) / (maxVecNorm - minVecNorm);
+            double value = img.readPixelGrayScale(pixel) / 255;
+
+            // Convert the HSV color in [0-1]^3 to RGB in the domain [0-255]^3
+            vec3 rgb = color::hsv2rgb(vec3(hue, 1.0, value));
+            img.setPixel(pixel, 255 * vec4(rgb.r, rgb.g, rgb.b, 1.0));
         }
     }
 }

@@ -59,8 +59,7 @@ protected:
     /// Our main computation function
     virtual void process() override;
 
-    // (TODO: Helper functions can be defined here and then implemented in the .cpp)
-    // e.g. something like a function for standardLIC, fastLIC, autoContrast, ...
+    // Helper functions to be defined here and then implemented in the .cpp
     std::string standardLIC(const VectorField2 &vectorField, const RGBAImage &inTex,
                                    RGBAImage &outImg);
     std::string parallelLIC(const VectorField2 &vectorField, const RGBAImage &inTex,
@@ -68,8 +67,8 @@ protected:
     std::string fastLIC(const VectorField2 &vectorField, const RGBAImage &inTex,
                                    RGBAImage &outImg);
 
+    void enhanceContrast(RGBAImage& img);
     void applyColor(const VectorField2 &vectorField, RGBAImage &img);
-    void enhanceConstrast(RGBAImage& img);
 
     dvec2 PixelToGrid(const VectorField2 &vectorField, const size2_t &pixel);
     size2_t GridToPixel(const VectorField2 &vectorField, const dvec2 &grid);
@@ -91,11 +90,11 @@ public:
     BoolProperty propColoredTexture;
     IntProperty propKernelRadius;
     DoubleProperty propStepSize;
-    TemplateOptionProperty<int> propLICType;
-    BoolProperty propInvalidate;
-    BoolProperty propEnhancedConstrast;
+    BoolProperty propEnhancedContrast;
     FloatProperty propDesiredMean;
     FloatProperty propDesiredSigma;
+    TemplateOptionProperty<int> propLICType;
+    BoolProperty propInvalidate;
 
     // Attributes
 private:
