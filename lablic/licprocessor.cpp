@@ -405,13 +405,14 @@ std::string LICProcessor::parallelLIC(const VectorField2& vectorField, const RGB
 
 void inviwo::LICProcessor::applyColor(const VectorField2& vectorField, RGBAImage& img) {
 
-	auto dims = vectorField.getNumVerticesPerDim();
-
 	double minVecNorm = DBL_MAX, maxVecNorm = 0.0;
-    for (size_t x = 0; x < dims.x; x++) {
-        for (size_t y = 0; y < dims.y; y++) {
+    for (size_t j = 0; j < texDims_.y; j++) {
+        for (size_t i = 0; i < texDims_.x; i++) {
+            dvec2 gridCenter = PixelToGrid(vectorField, {i, j});
+            dvec2 vecValue = vectorField.interpolate(gridCenter);
+
             // Store the minimum/maximum vector length along the sampled points
-            double vecNorm = Integrator::Magnitude(vectorField.getValueAtVertex({x, y}));
+            double vecNorm = Integrator::Magnitude(vecValue);
             if (vecNorm < minVecNorm) minVecNorm = vecNorm;
             if (vecNorm > maxVecNorm) maxVecNorm = vecNorm;
         }
