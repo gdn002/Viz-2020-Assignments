@@ -14,6 +14,7 @@
 #include <inviwo/core/ports/imageport.h>
 #include <inviwo/core/processors/processor.h>
 #include <inviwo/core/properties/optionproperty.h>
+#include <inviwo/core/properties/boolproperty.h>
 #include <inviwo/core/properties/ordinalproperty.h>
 #include <lablic/lablicmoduledefine.h>
 
@@ -57,6 +58,7 @@ public:
     IntVec2Property texSize_;
 
     IntProperty propRandomSeed;
+    BoolProperty propBW;
     // TODO: Declare additional properties
     // IntProperty properyName;
     // TemplateOptionProperty<int> propertyName2;

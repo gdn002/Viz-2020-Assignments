@@ -32,6 +32,7 @@ NoiseTextureGenerator::NoiseTextureGenerator()
     , texSize_("texSize", "Texture Size", vec2(512, 512), vec2(1, 1), vec2(2048, 2048), vec2(1, 1))
 // TODO: Register additional properties
     , propRandomSeed("randomSeed", "Random Seed", 0, 0, 2048, 1)
+    , propBW("blackNwhite", "Use Gray values", false)
 {
     // Register ports
     addPort(texOut_);
@@ -39,6 +40,7 @@ NoiseTextureGenerator::NoiseTextureGenerator()
     // Register properties
     addProperty(texSize_);
     addProperty(propRandomSeed);
+    addProperty(propBW);
 
     // TODO: Register additional properties
 
@@ -85,7 +87,10 @@ void NoiseTextureGenerator::process() {
     int p;
     for (int j = 0; j < texSize_.get().y; j++) {
       for (int i = 0; i < texSize_.get().x; i++) {
-        p = (rand() % 2) * 255;
+        if(propBW == true)
+          p = rand() % 256;
+        else
+          p = (rand() % 2) * 255;
         noiseTexture.setPixelGrayScale(size2_t(i, j), p);
       }
     }
