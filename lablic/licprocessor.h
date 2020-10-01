@@ -68,7 +68,8 @@ protected:
     std::string fastLIC(const VectorField2 &vectorField, const RGBAImage &inTex,
                                    RGBAImage &outImg);
 
-	void applyColor(const VectorField2 &vectorField, RGBAImage &img);
+    void applyColor(const VectorField2 &vectorField, RGBAImage &img);
+    void enhanceConstrast(RGBAImage& img);
 
     dvec2 PixelToGrid(const VectorField2 &vectorField, const size2_t &pixel);
     size2_t GridToPixel(const VectorField2 &vectorField, const dvec2 &grid);
@@ -87,11 +88,14 @@ public:
     // Properties
 public:
     // Declare properties
-	BoolProperty propColoredTexture;
+    BoolProperty propColoredTexture;
     IntProperty propKernelRadius;
     DoubleProperty propStepSize;
     TemplateOptionProperty<int> propLICType;
     BoolProperty propInvalidate;
+    BoolProperty propEnhancedConstrast;
+    FloatProperty propDesiredMean;
+    FloatProperty propDesiredSigma;
 
     // Attributes
 private:

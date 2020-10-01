@@ -32,11 +32,14 @@ LICProcessor::LICProcessor()
     , volumeIn_("volIn")
     , noiseTexIn_("noiseTexIn")
     , licOut_("licOut")
-    , propColoredTexture("coloredTexture", "Colored Texture", true)
+    , propColoredTexture("coloredTexture", "Colored Texture", false)
     , propKernelRadius("kernelRadius", "Kernel Radius", 40, 1, 100, 1)
     , propStepSize("stepSize", "Step Size", 0.003, 0.001, 0.01, 0.001)
     , propLICType("LICType", "LIC Type")
-    , propInvalidate("invalidate", "Render", false) 
+    , propInvalidate("invalidate", "Render", false)
+    , propEnhancedConstrast("enhancedConstrast", "Enhanced Constrast", true)
+    , propDesiredMean("desiredMean", "Adjusted Mean", 0.5f, 0, 1.0f, 0.1f)
+    , propDesiredSigma("desiredSigma", "Adjusted Standard Deviation", 0.1f, 0, 1.0f, 0.05f)
 {
     // Register ports
     addPort(volumeIn_);
@@ -49,8 +52,11 @@ LICProcessor::LICProcessor()
     addProperty(propStepSize);
     addProperty(propLICType);
     addProperty(propInvalidate);
+    addProperty(propEnhancedConstrast);
+    addProperty(propDesiredMean);
+    addProperty(propDesiredSigma);
 
-	propLICType.addOption("standard", "Standard", 0);
+    propLICType.addOption("standard", "Standard", 0);
     propLICType.addOption("fast", "Fast", 1);
     propLICType.addOption("parallel", "Parallel", 2);
 }
@@ -65,7 +71,7 @@ void LICProcessor::process() {
         return;
     }
 
-	if (!propInvalidate.get()) return;
+    if (!propInvalidate.get()) return;
 
     auto vol = volumeIn_.getData();
     VectorField2 vectorField = VectorField2::createFieldFromVolume(vol);
@@ -87,7 +93,7 @@ void LICProcessor::process() {
     // LIC runs here
     switch (propLICType.get()) {
         case 0:
-			LogProcessorInfo(standardLIC(vectorField, texture, licImage));
+            LogProcessorInfo(standardLIC(vectorField, texture, licImage));
             break;
         case 1:
             LogProcessorInfo(fastLIC(vectorField, texture, licImage));
@@ -97,8 +103,11 @@ void LICProcessor::process() {
             break;
     }
 
-	if (propColoredTexture.get()) {
+    if (propColoredTexture.get()) {
         applyColor(vectorField, licImage);
+    }
+    if (propEnhancedConstrast.get()) {
+        enhanceConstrast(licImage);
     }
 
     propInvalidate.set(false);
@@ -336,14 +345,11 @@ std::string LICProcessor::parallelLIC(const VectorField2& vectorField, const RGB
     const int steps = propKernelRadius.get();
     const double stepSize = propStepSize.get();
 
-    int counter;
-    double sum;
-
     time_t startTime;
     time(&startTime);
 
-#pragma omp parallel
-#pragma omp for
+    #pragma omp parallel
+    #pragma omp for
     for (size_t j = 0; j < texDims_.y; j++) {
         for (size_t i = 0; i < texDims_.x; i++) {
 
@@ -405,7 +411,7 @@ std::string LICProcessor::parallelLIC(const VectorField2& vectorField, const RGB
 
 void inviwo::LICProcessor::applyColor(const VectorField2& vectorField, RGBAImage& img) {
 
-	double minVecNorm = DBL_MAX, maxVecNorm = 0.0;
+    double minVecNorm = DBL_MAX, maxVecNorm = 0.0;
     for (size_t j = 0; j < texDims_.y; j++) {
         for (size_t i = 0; i < texDims_.x; i++) {
             dvec2 gridCenter = PixelToGrid(vectorField, {i, j});
@@ -419,7 +425,7 @@ void inviwo::LICProcessor::applyColor(const VectorField2& vectorField, RGBAImage
     }
     LogProcessorInfo("minVecNorm: " << minVecNorm << " , maxVecNorm: " << maxVecNorm);
 
-	for (size_t j = 0; j < texDims_.y; j++) {
+    for (size_t j = 0; j < texDims_.y; j++) {
         for (size_t i = 0; i < texDims_.x; i++) {
             size2_t pixel = {i, j};
 
@@ -434,6 +440,44 @@ void inviwo::LICProcessor::applyColor(const VectorField2& vectorField, RGBAImage
             // Convert the HSV color in [0-1]^3 to RGB in the domain [0-255]^3
             vec3 rgb = color::hsv2rgb(vec3(hue, 1.0, value));
             img.setPixel(pixel, 255 * vec4(rgb.r, rgb.g, rgb.b, 1.0));
+        }
+    }
+}
+
+void inviwo::LICProcessor::enhanceConstrast(RGBAImage& img) {
+    int pixelCounter = 0;
+    double pixelSum = 0.0, pixelSqrSum = 0.0;
+
+    for (size_t j = 0; j < texDims_.y; j++) {
+        for (size_t i = 0; i < texDims_.x; i++) {
+            // Read grayscale pixel value in [0-1] range
+            double value = img.readPixelGrayScale({i, j}) / 255;
+
+            // Discard all non-black pixels
+            if (value != 0) {
+                pixelCounter++;
+                pixelSum += value;
+                pixelSqrSum += pow(value, 2);
+            }
+        }
+    }
+
+    // Compute the mean and standard deviation of the LIC texture
+    double mu = pixelSum / (double)pixelCounter;
+    double sigma = sqrt((pixelSqrSum - pixelCounter*pow(mu, 2)) /
+                        ((double)pixelCounter - 1));
+
+    double desiredMu = propDesiredMean.get();
+    double stretchFactor = propDesiredSigma.get() / sigma;
+    LogProcessorInfo("mu: " << mu << ", sigma: " << sigma);
+    LogProcessorInfo("Stretch factor: " << stretchFactor);
+
+    // Iterate over each pixel and compute the adjusted grayscale pixel
+    for (size_t j = 0; j < texDims_.y; j++) {
+        for (size_t i = 0; i < texDims_.x; i++) {
+            double oldValue = img.readPixelGrayScale(size2_t(i, j)) / 255;
+            double newValue = desiredMu + stretchFactor * (oldValue - mu);
+            img.setPixelGrayScale(size2_t(i, j), newValue * 255);
         }
     }
 }
