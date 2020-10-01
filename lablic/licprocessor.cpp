@@ -69,31 +69,34 @@ void LICProcessor::process() {
     auto outImage = std::make_shared<Image>(texDims_, DataVec4UInt8::get());
     RGBAImage licImage(outImage);
 
-    std::vector<std::vector<double>> licTexture(texDims_.x, std::vector<double>(texDims_.y, -1.0));
-
-    // Hint: Output an image showing which pixels you have visited for debugging
-    std::vector<std::vector<int>> visited(texDims_.x, std::vector<int>(texDims_.y, 0));
-
     // LIC runs here
-    //LogProcessorInfo(standardLIC(vectorField, texture, licImage));
-    LogProcessorInfo(fastLIC(vectorField, texture, licImage, licTexture, 50));
+    LogProcessorInfo(standardLIC(vectorField, texture, licImage));
+    //LogProcessorInfo(parallelLIC(vectorField, texture, licImage));
+    //LogProcessorInfo(fastLIC(vectorField, texture, licImage));
 
     licOut_.setData(outImage);
 }
 
 std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAImage& inTex,
-                                  RGBAImage& outImg, std::vector<std::vector<double>>& visited,
-                                  int kernel_size) {
+                                  RGBAImage& outImg) {
     Integrator::RK4CallCounter = 0;
 
-    int steps = 20;
-    double stepSize = 0.005;
+    int steps = 60;
+    double stepSize = 0.003;
 
     int counter;
-    double sum = 0.0;
+    double sum;
+
+	unsigned int skipCount = 0;
 
     time_t startTime;
     time(&startTime);
+
+	dvec2 gridCenter;
+    dvec2 current;
+
+    std::list<size2_t> forwardSteps;
+    std::list<size2_t> backwardSteps;
 
     std::vector<std::vector<unsigned char>> buffer(texDims_.x, std::vector<unsigned char>(texDims_.y, 0));
 
@@ -103,21 +106,10 @@ std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAIma
             size2_t center = {i, j};
             if (buffer[center.x][center.y] == 0) {
 
-                dvec2 gridCenter = PixelToGrid(vectorField, center);
-
-                // Forward integration
-                std::list<size2_t> forwardSteps;
-                dvec2 current = gridCenter;
-                for (int k = 0; k < steps; k++) {
-                    dvec2 next;
-                    if (!Integrator::RK4Lite(vectorField, current, next, stepSize, true, false))
-                        break;
-                    forwardSteps.push_back(GridToPixel(vectorField, next));
-                    current = next;
-                }
+                gridCenter = PixelToGrid(vectorField, center);
 
                 // Backward integration
-                std::list<size2_t> backwardSteps;
+                backwardSteps.clear();
                 current = gridCenter;
                 for (int k = 0; k < steps; k++) {
                     dvec2 next;
@@ -127,11 +119,22 @@ std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAIma
                     current = next;
                 }
 
+				// Forward integration (done in this order because we need to keep the last "current" value)
+                forwardSteps.clear();
+                current = gridCenter;
+                for (int k = 0; k < steps; k++) {
+                    dvec2 next;
+                    if (!Integrator::RK4Lite(vectorField, current, next, stepSize, true, false))
+                        break;
+                    forwardSteps.push_back(GridToPixel(vectorField, next));
+                    current = next;
+                }
+
                 // Sum all values from kernel
 
                 // Central pixel
-                int counter = 1;
-                double sum = inTex.readPixelGrayScale(center);
+                counter = 1;
+                sum = inTex.readPixelGrayScale(center);
 
                 // Forward pixels
                 for (auto it = forwardSteps.begin(); it != forwardSteps.end(); it++) {
@@ -155,9 +158,10 @@ std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAIma
 				// Mark as visited
                 buffer[center.x][center.y] = 1;
 
+				bool reachedEnd = false;
+
                 // Begin iterating forward
                 while (!forwardSteps.empty()) {
-
                     // Pop last pixel in backward vector (if the backward vector is at maximum
                     // length)
                     if (backwardSteps.size() == steps) {
@@ -174,19 +178,22 @@ std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAIma
                     forwardSteps.pop_front();
 
 					// Check for loops
-                    if (buffer[center.x][center.y] != 0) break;
+                    if (buffer[center.x][center.y] != 0) {
+                        skipCount++;
+                        break;
+                    }
 
-					// Calculate next step and put at end of forward vector (if there is a next step)
-                    if (!forwardSteps.empty()) {
-                        current = PixelToGrid(vectorField, forwardSteps.back()); 
-						dvec2 next;
+					// Integrate next step and put at end of forward vector (if there is a next step)
+                    if (!reachedEnd) {
+                        dvec2 next;
 						if (Integrator::RK4Lite(vectorField, current, next, stepSize, true, false)) {
-							size2_t nextPixel = GridToPixel(vectorField, next);
-							if (nextPixel != forwardSteps.back()) { // Prevent from getting stuck in a sink
-								forwardSteps.push_back(nextPixel);
-								sum += inTex.readPixelGrayScale(nextPixel);
-								counter++;
-							}
+							forwardSteps.push_back(GridToPixel(vectorField, next));
+							sum += inTex.readPixelGrayScale(forwardSteps.back());
+							current = next;
+							counter++;
+						}
+						else {
+							reachedEnd = true; // No more forward steps possible, let forward list run empty
 						}
                     }
 
@@ -194,6 +201,8 @@ std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAIma
                     outImg.setPixelGrayScale(center, sum / counter);
                     buffer[center.x][center.y] = 1;
                 }
+            } else {
+                skipCount++;
             }
         }
     }
@@ -202,15 +211,94 @@ std::string LICProcessor::fastLIC(const VectorField2& vectorField, const RGBAIma
     time(&endTime);
 
     return "Fast LIC completed in " + toString(difftime(endTime, startTime)) + " seconds, with " 
-		+ toString(Integrator::RK4CallCounter) + " RK4 calls.";
+		+ toString(Integrator::RK4CallCounter) + " RK4 calls and " + toString(skipCount) + " skips.";
 }
+
 std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGBAImage& inTex,
                                       RGBAImage& outImg) {
 
     Integrator::RK4CallCounter = 0;
 
-    int steps = 40;
-    double stepSize = 0.005;
+    int steps = 60;
+    double stepSize = 0.003;
+
+    int counter;
+    double sum;
+
+	dvec2 current;
+
+	std::vector<size2_t> forwardSteps;
+    std::vector<size2_t> backwardSteps;
+
+	forwardSteps.reserve(steps);
+    backwardSteps.reserve(steps);
+
+    time_t startTime;
+    time(&startTime);
+
+    for (size_t j = 0; j < texDims_.y; j++) {
+        for (size_t i = 0; i < texDims_.x; i++) {
+
+            dvec2 gridCenter = PixelToGrid(vectorField, {i, j});
+
+            // Forward integration
+            forwardSteps.clear();
+            current = gridCenter;
+            for (int k = 0; k < steps; k++) {
+                dvec2 next;
+                if (!Integrator::RK4Lite(vectorField, current, next, stepSize, true, false)) break;
+                forwardSteps.push_back(GridToPixel(vectorField, next));
+                current = next;
+            }
+
+            // Backward integration
+            backwardSteps.clear();
+            current = gridCenter;
+            for (int k = 0; k < steps; k++) {
+                dvec2 next;
+                if (!Integrator::RK4Lite(vectorField, current, next, stepSize, true, true)) break;
+                backwardSteps.push_back(GridToPixel(vectorField, next));
+                current = next;
+            }
+
+            // Sum all values from kernel
+
+            // Central pixel
+            counter = 1;
+            sum = inTex.readPixelGrayScale(size2_t(i, j));
+
+            // Forward pixels
+            for (int k = 0; k < forwardSteps.size(); k++) {
+                sum += inTex.readPixelGrayScale(forwardSteps[k]);
+                counter++;
+            }
+
+            // Backward pixels
+            for (int k = 0; k < backwardSteps.size(); k++) {
+                sum += inTex.readPixelGrayScale(backwardSteps[k]);
+                counter++;
+            }
+
+            if (counter > 1) {
+                sum /= counter;  // Average grayscale values along the sampled pixels
+            } else {
+                sum = 0;  // If only the center pixel was sampled, it means it is over a sink
+            }
+            outImg.setPixelGrayScale(size2_t(i, j), sum);
+        }
+    }
+
+    time_t endTime;
+    time(&endTime);
+
+    return "Standard LIC completed in " + toString(difftime(endTime, startTime)) + " seconds, with " +
+           toString(Integrator::RK4CallCounter) + " RK4 calls.";
+}
+
+std::string LICProcessor::parallelLIC(const VectorField2& vectorField, const RGBAImage& inTex,
+                                      RGBAImage& outImg) {
+    int steps = 60;
+    double stepSize = 0.008;
 
     int counter;
     double sum;
@@ -218,8 +306,8 @@ std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGB
     time_t startTime;
     time(&startTime);
 
-//#pragma omp parallel
-//#pragma omp for
+    #pragma omp parallel
+    #pragma omp for
     for (size_t j = 0; j < texDims_.y; j++) {
         for (size_t i = 0; i < texDims_.x; i++) {
 
@@ -275,8 +363,8 @@ std::string LICProcessor::standardLIC(const VectorField2& vectorField, const RGB
     time_t endTime;
     time(&endTime);
 
-    return "Standard LIC completed in " + toString(difftime(endTime, startTime)) + " seconds, with " +
-           toString(Integrator::RK4CallCounter) + " RK4 calls.";
+	// RK4 counter is not thread-safe, so this information is ommited here
+    return "Parallel LIC completed in " + toString(difftime(endTime, startTime)) + ".";
 }
 
 dvec2 inviwo::LICProcessor::PixelToGrid(const VectorField2& vectorField, const size2_t& pixel) {
