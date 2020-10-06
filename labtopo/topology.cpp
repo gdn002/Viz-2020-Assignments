@@ -100,23 +100,28 @@ void Topology::process() {
 
     size2_t dims = vectorField.getNumVerticesPerDim();
 
-    // Looping through all values in the vector field.
+    // Looping through all cells in the vector field.
+    dvec2 v_00, v_01, v_10, v_11, pos;
     for (size_t j = 0; j < dims[1]-1; ++j) {
         for (size_t i = 0; i < dims[0]-1; ++i) {
-            dvec2 v_00 = vectorField.getValueAtVertex(size2_t(i, j));
-            dvec2 v_01 = vectorField.getValueAtVertex(size2_t(i, j+1));
-            dvec2 v_10 = vectorField.getValueAtVertex(size2_t(i+1, j));
-            dvec2 v_11 = vectorField.getValueAtVertex(size2_t(i+1, j+1));
+            v_00 = vectorField.getValueAtVertex(size2_t(i, j));
+            v_01 = vectorField.getValueAtVertex(size2_t(i, j+1));
+            v_10 = vectorField.getValueAtVertex(size2_t(i+1, j));
+            v_11 = vectorField.getValueAtVertex(size2_t(i+1, j+1));
 
             if(v_00.x == 0 && v_01.y == 0){
                 // this is a critical point
+
+                pos = vectorField.getPositionAtVertex(size2_t(i, j));
+                Integrator::drawPoint(pos, black, indexBufferPoints.get(), vertices);
             }
-            else if (!(v_00.x>0 && v_01.x>0 && v_10.x>0 && v_11.x>0) && //if not all x have the same sign
-                     !(v_00.x<0 && v_01.x<0 && v_10.x<0 && v_11.x<0)){
-                if (!(v_00.y>0 && v_01.y>0 && v_10.y>0 && v_11.y>0) && //and not all y have the same sign
-                    !(v_00.y<0 && v_01.y<0 && v_10.y<0 && v_11.y<0)){
-                    // this can be a critical point
-                }
+            else if ((!(v_00.x>0 && v_01.x>0 && v_10.x>0 && v_11.x>0) && //if not all x have the same sign
+                      !(v_00.x<0 && v_01.x<0 && v_10.x<0 && v_11.x<0)) &&
+                    (!(v_00.y>0 && v_01.y>0 && v_10.y>0 && v_11.y>0) && //and not all y have the same sign
+                     !(v_00.y<0 && v_01.y<0 && v_10.y<0 && v_11.y<0))){
+                // this can be a critical point
+                pos = vectorField.getPositionAtVertex(size2_t(i, j));
+                Integrator::drawPoint(pos, black, indexBufferPoints.get(), vertices);
             }
         }
     }
