@@ -44,6 +44,7 @@ Topology::Topology()
 // propertyName("propertyIdentifier", "Display Name of the Propery",
 // default value (optional), minimum value (optional), maximum value (optional), increment
 // (optional)); propertyIdentifier cannot have spaces
+    , propMinLength("minimumLength", "Minimum Cell Length", 1.0f, 0, 5, 0.01f)
 {
     // Register Ports
     addPort(outMesh);
@@ -52,6 +53,7 @@ Topology::Topology()
 
     // TODO: Register additional properties
     // addProperty(propertyName);
+    addProperty(propMinLength);
 }
 
 void Topology::process() {
@@ -101,28 +103,15 @@ void Topology::process() {
     size2_t dims = vectorField.getNumVerticesPerDim();
 
     // Looping through all cells in the vector field.
-    dvec2 v_00, v_01, v_10, v_11, pos;
+    dvec2 p_00, p_01, p_10, p_11;
     for (size_t j = 0; j < dims[1]-1; ++j) {
         for (size_t i = 0; i < dims[0]-1; ++i) {
-            v_00 = vectorField.getValueAtVertex(size2_t(i, j));
-            v_01 = vectorField.getValueAtVertex(size2_t(i, j+1));
-            v_10 = vectorField.getValueAtVertex(size2_t(i+1, j));
-            v_11 = vectorField.getValueAtVertex(size2_t(i+1, j+1));
-
-            if(v_00.x == 0 && v_01.y == 0){
-                // this is a critical point
-
-                pos = vectorField.getPositionAtVertex(size2_t(i, j));
-                Integrator::drawPoint(pos, black, indexBufferPoints.get(), vertices);
-            }
-            else if ((!(v_00.x>0 && v_01.x>0 && v_10.x>0 && v_11.x>0) && //if not all x have the same sign
-                      !(v_00.x<0 && v_01.x<0 && v_10.x<0 && v_11.x<0)) &&
-                    (!(v_00.y>0 && v_01.y>0 && v_10.y>0 && v_11.y>0) && //and not all y have the same sign
-                     !(v_00.y<0 && v_01.y<0 && v_10.y<0 && v_11.y<0))){
-                // this can be a critical point
-                pos = vectorField.getPositionAtVertex(size2_t(i, j));
-                Integrator::drawPoint(pos, black, indexBufferPoints.get(), vertices);
-            }
+            p_00 = vectorField.getPositionAtVertex(size2_t(i, j));
+            p_01 = vectorField.getPositionAtVertex(size2_t(i, j+1));
+            p_10 = vectorField.getPositionAtVertex(size2_t(i+1, j));
+            p_11 = vectorField.getPositionAtVertex(size2_t(i+1, j+1));
+            
+            checkChangeOfSign(vectorField, indexBufferPoints.get(), vertices, p_00, p_01, p_10, p_11, p_10.x-p_00.x, p_01.y-p_00.y, propMinLength.get());
         }
     }
 
@@ -140,6 +129,60 @@ void Topology::process() {
 
     mesh->addVertices(vertices);
     outMesh.setData(mesh);
+}
+
+void Topology::checkChangeOfSign(const VectorField2& vectorField,
+    IndexBufferRAM* indexBuffer, std::vector<BasicMesh::Vertex>& vertices, dvec2
+    pos00,dvec2 pos01,dvec2 pos10,dvec2 pos11, float lengthX, float lengthY,
+    float minLength){
+   dvec2 v_00 = vectorField.interpolate(pos00);
+   dvec2 v_01 = vectorField.interpolate(pos01);
+   dvec2 v_10 = vectorField.interpolate(pos10);
+   dvec2 v_11 = vectorField.interpolate(pos11);
+
+    //if(v_00.x == 0 && v_00.y == 0){
+    //    // this is a critical point
+    //    Integrator::drawPoint(pos00, {0,0,0,1}, indexBuffer, vertices);
+    //}
+    //if(v_01.x == 0 && v_01.y == 0){
+    //    // this is a critical point
+    //    Integrator::drawPoint(pos00, {0,0,0,1}, indexBuffer, vertices);
+    //}
+    //if(v_10.x == 0 && v_10.y == 0){
+    //    // this is a critical point
+    //    Integrator::drawPoint(pos00, {0,0,0,1}, indexBuffer, vertices);
+    //}
+    //if(v_11.x == 0 && v_11.y == 0){
+    //    // this is a critical point
+    //    Integrator::drawPoint(pos00, {0,0,0,1}, indexBuffer, vertices);
+    //}
+    //else 
+      if ((!(v_00.x>0 && v_01.x>0 && v_10.x>0 && v_11.x>0) && //if not all x have the same sign
+              !(v_00.x<0 && v_01.x<0 && v_10.x<0 && v_11.x<0)) &&
+            (!(v_00.y>0 && v_01.y>0 && v_10.y>0 && v_11.y>0) && //and not all y have the same sign
+             !(v_00.y<0 && v_01.y<0 && v_10.y<0 && v_11.y<0))){
+        // this may be a critical point
+        //stop condition
+        if(lengthX < minLength || lengthY < minLength){
+            Integrator::drawPoint(pos00, {0,0,0,1}, indexBuffer, vertices);
+            return;
+        }
+
+        lengthX /= 2;
+        lengthY /= 2;
+    
+       dvec2 midD = {pos00.x+lengthX, pos00.y};
+       dvec2 midL = {pos00.x, pos00.y+lengthY};
+       dvec2 midC = {pos00.x+lengthX, pos00.y+lengthY};
+       dvec2 midR = {pos10.x, pos10.y+lengthY};
+       dvec2 midU = {pos01.x+lengthX, pos01.y};
+        checkChangeOfSign(vectorField,indexBuffer,vertices,pos00,midD,midL,midC,lengthX,lengthY,minLength);
+        checkChangeOfSign(vectorField,indexBuffer,vertices,midD,pos01,midC,midR,lengthX,lengthY,minLength);
+        checkChangeOfSign(vectorField,indexBuffer,vertices,midL,midC,pos10,midU,lengthX,lengthY,minLength);
+        checkChangeOfSign(vectorField,indexBuffer,vertices,midC,midR,midU,pos11,lengthX,lengthY,minLength);
+        
+    }
+
 }
 
 void Topology::drawLineSegment(const dvec2& v1, const dvec2& v2, const vec4& color,

@@ -73,6 +73,10 @@ protected:
     static void drawLineSegment(const dvec2& v1, const dvec2& v2, const vec4& color,
                                 IndexBufferRAM* indexBuffer,
                                 std::vector<BasicMesh::Vertex>& vertices);
+    static void checkChangeOfSign(const VectorField2& vectorField,
+        IndexBufferRAM* indexBuffer, std::vector<BasicMesh::Vertex>& vertices,
+       dvec2 pos00,dvec2 pos01,dvec2 pos10,dvec2 pos11, float lengthX,
+        float lengthY, float minLength);
 
     // Ports
 public:
@@ -84,6 +88,9 @@ public:
 
 	// Output mesh for bounding box and gridlines
     MeshOutport meshBBoxOut;
+
+    // Properties
+    FloatProperty propMinLength;
 
 };  // namespace inviwo
 
