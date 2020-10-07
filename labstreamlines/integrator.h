@@ -73,6 +73,7 @@ public:
 	static bool RK4Lite(const VectorField2& vectorField, const dvec2& start, dvec2& end,
                                double stepSize, bool normalize, bool inverted);
 
+    static dvec2 Add(const dvec2& v1, const dvec2& v2);
     static dvec2 Multiply(const dvec2& vector, const float& factor);
     static dvec2 Divide(const dvec2& vector, const float& divisor);
 

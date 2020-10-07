@@ -44,7 +44,7 @@ Topology::Topology()
 // propertyName("propertyIdentifier", "Display Name of the Propery",
 // default value (optional), minimum value (optional), maximum value (optional), increment
 // (optional)); propertyIdentifier cannot have spaces
-    , propMinLength("minimumLength", "Minimum Cell Length", 1.0f, 0, 5, 0.01f)
+    , propMinLength("minimumLength", "Minimum Cell Length", 1.0f, 0.000001f, 5, 0.01f)
 {
     // Register Ports
     addPort(outMesh);
@@ -111,7 +111,9 @@ void Topology::process() {
             p_01 = vectorField.getPositionAtVertex(size2_t(i, j+1));
             p_11 = vectorField.getPositionAtVertex(size2_t(i+1, j+1));
             
-            checkChangeOfSign(vectorField, indexBufferPoints.get(), vertices, p_00, p_10, p_01, p_11, p_10.x-p_00.x, p_01.y-p_00.y, propMinLength.get());
+            checkChangeOfSign(vectorField, indexBufferPoints.get(),
+                              indexBufferSeparatrices.get(), vertices, p_00, p_10, p_01, p_11,
+                              p_10.x - p_00.x, p_01.y - p_00.y, propMinLength.get());
         }
     }
 
@@ -132,7 +134,7 @@ void Topology::process() {
 }
 
 void Topology::checkChangeOfSign(const VectorField2& vectorField,
-    IndexBufferRAM* indexBuffer, std::vector<BasicMesh::Vertex>& vertices, dvec2
+    IndexBufferRAM* indexBufferPoints, IndexBufferRAM* indexBufferLines, std::vector<BasicMesh::Vertex>& vertices, dvec2
     pos00,dvec2 pos10,dvec2 pos01,dvec2 pos11, float lengthX, float lengthY,
     float minLength){
    dvec2 v_00 = vectorField.interpolate(pos00);
@@ -165,7 +167,13 @@ void Topology::checkChangeOfSign(const VectorField2& vectorField,
         // this may be a critical point
         //stop condition
         if(lengthX < minLength || lengthY < minLength){
-            Integrator::drawPoint(pos00, {0,0,0,1}, indexBuffer, vertices);
+            auto t = analyzeCriticalPoint(vectorField, pos00);
+
+			if (t == TypeCP::Saddle) {
+                drawSeparatrices(vectorField, indexBufferLines, vertices, pos00);
+
+            }
+            Integrator::drawPoint(pos00, ColorsCP[(int)t], indexBufferPoints, vertices);
             return;
         }
 
@@ -177,10 +185,10 @@ void Topology::checkChangeOfSign(const VectorField2& vectorField,
        dvec2 midC = {pos00.x+lengthX, pos00.y+lengthY};
        dvec2 midR = {pos10.x, pos10.y+lengthY};
        dvec2 midU = {pos01.x+lengthX, pos01.y};
-        checkChangeOfSign(vectorField,indexBuffer,vertices,pos00,midD,midL,midC,lengthX,lengthY,minLength);
-        checkChangeOfSign(vectorField,indexBuffer,vertices,midD,pos10,midC,midR,lengthX,lengthY,minLength);
-        checkChangeOfSign(vectorField,indexBuffer,vertices,midL,midC,pos01,midU,lengthX,lengthY,minLength);
-        checkChangeOfSign(vectorField,indexBuffer,vertices,midC,midR,midU,pos11,lengthX,lengthY,minLength);
+        checkChangeOfSign(vectorField,indexBufferPoints,indexBufferLines,vertices,pos00,midD,midL,midC,lengthX,lengthY,minLength);
+        checkChangeOfSign(vectorField,indexBufferPoints,indexBufferLines,vertices,midD,pos10,midC,midR,lengthX,lengthY,minLength);
+        checkChangeOfSign(vectorField,indexBufferPoints,indexBufferLines,vertices,midL,midC,pos01,midU,lengthX,lengthY,minLength);
+        checkChangeOfSign(vectorField,indexBufferPoints,indexBufferLines,vertices,midC,midR,midU,pos11,lengthX,lengthY,minLength);
         
     }
 
@@ -193,6 +201,108 @@ void Topology::drawLineSegment(const dvec2& v1, const dvec2& v2, const vec4& col
     vertices.push_back({vec3(v1[0], v1[1], 0), vec3(0, 0, 1), vec3(v1[0], v1[1], 0), color});
     indexBuffer->add(static_cast<std::uint32_t>(vertices.size()));
     vertices.push_back({vec3(v2[0], v2[1], 0), vec3(0, 0, 1), vec3(v2[0], v2[1], 0), color});
+}
+
+Topology::TypeCP inviwo::Topology::analyzeCriticalPoint(const VectorField2& vectorField,
+                                                        const dvec2& criticalPoint) {
+
+    // The critical point MUST be an isolated critical point
+    auto eigenValues = util::eigenAnalysis(vectorField.derive(criticalPoint));
+
+    // Imaginary values are zero (Saddle, Attracting Node, Repelling Node)
+    if (eigenValues.eigenvaluesIm[0] == 0 && eigenValues.eigenvaluesIm[1] == 0) {
+
+        // Both real values are greater than zero (Repelling Node)
+        if (eigenValues.eigenvaluesRe[0] > 0 && eigenValues.eigenvaluesRe[1] > 0)
+            return TypeCP::RepellingNode;
+
+        // Both real values are lesser than zero (Attracting Node)
+        if (eigenValues.eigenvaluesRe[0] < 0 && eigenValues.eigenvaluesRe[1] < 0)
+            return TypeCP::AttractingNode;
+
+        // One real value is greater than zero and the other is lesser than zero (Saddle)
+        return TypeCP::Saddle;
+    }
+    // Imaginary values are nonzero (Center, Attracting Focus, Repelling Focus)
+    else {
+
+        // Both real values are greater than zero (Repelling Focus)
+        if (eigenValues.eigenvaluesRe[0] > 0 && eigenValues.eigenvaluesRe[1] > 0)
+            return TypeCP::RepellingFocus;
+
+        // Both real values are lesser than zero (Attracting Focus)
+        if (eigenValues.eigenvaluesRe[0] < 0 && eigenValues.eigenvaluesRe[1] < 0)
+            return TypeCP::AttractingFocus;
+
+        // Both real values are zero (Center)
+        return TypeCP::Center;
+    }
+}
+
+void inviwo::Topology::getSeedingPointsFromSaddle(const VectorField2& vectorField,
+                                                  const dvec2& saddlePoint, dvec2 (&out)[2],
+                                                  dvec2 (&in)[2]) {
+
+    auto eigenValues = util::eigenAnalysis(vectorField.derive(saddlePoint));
+
+    // The initial step from the saddle point at which the line is seeded
+    double firstStep = 0.001;
+
+
+    // Check for outbound seeding points (positive EigenValue)
+    // These must be integrated FORWARD
+    for (size_t i = 0; i < 2; i++) {
+        if (eigenValues.eigenvaluesRe[i] > 0) {
+            // Two points, one in each direction
+            out[0] = Integrator::Add(saddlePoint, (eigenValues.eigenvectors[i] * firstStep));
+            out[1] = Integrator::Add(saddlePoint, (eigenValues.eigenvectors[i] * -firstStep));
+            break;
+        }
+    }
+
+    // Check for inbound seeding points (negative EigenValue)
+    // These must be integrated BACKWARD
+    for (size_t i = 0; i < 2; i++) {
+        if (eigenValues.eigenvaluesRe[i] < 0) {
+            // Two points, one in each direction
+            in[0] = Integrator::Add(saddlePoint, (eigenValues.eigenvectors[i] * firstStep));
+            in[1] = Integrator::Add(saddlePoint, (eigenValues.eigenvectors[i] * -firstStep));
+            break;
+        }
+    }
+}
+
+void inviwo::Topology::drawSeparatrices(const VectorField2& vectorField,
+                                        IndexBufferRAM* indexBuffer,
+                                        std::vector<BasicMesh::Vertex>& vertices,
+                                        const dvec2& saddlePoint) {
+    dvec2 inbound[2];
+    dvec2 outbound[2];
+
+	getSeedingPointsFromSaddle(vectorField, saddlePoint, outbound, inbound);
+
+	for (size_t i = 0; i < 2; i++) {
+		drawSingleSeparatrice(vectorField, indexBuffer, vertices, inbound[i], true);
+		drawSingleSeparatrice(vectorField, indexBuffer, vertices, outbound[i], false);
+    }
+}
+
+void inviwo::Topology::drawSingleSeparatrice(const VectorField2& vectorField,
+                                             IndexBufferRAM* indexBuffer,
+                                             std::vector<BasicMesh::Vertex>& vertices,
+                                             const dvec2& seedingPoint, bool inverted) {
+    dvec2 current = seedingPoint;
+    dvec2 next;
+
+	// TODO: Make this a property
+	double stepSize = 0.1;
+
+	// Integrate line until it hits a sink or a boundary
+    for (size_t i = 0; i < 100; i++) {
+		if (!Integrator::RK4Lite(vectorField, current, next, stepSize, false, inverted)) return;
+        Integrator::drawLineSegment(current, next, {1, 1, 1, 1}, indexBuffer, vertices);
+        current = next;
+    }
 }
 
 }  // namespace inviwo

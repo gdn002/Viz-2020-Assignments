@@ -74,9 +74,21 @@ protected:
                                 IndexBufferRAM* indexBuffer,
                                 std::vector<BasicMesh::Vertex>& vertices);
     static void checkChangeOfSign(const VectorField2& vectorField,
-        IndexBufferRAM* indexBuffer, std::vector<BasicMesh::Vertex>& vertices,
+        IndexBufferRAM* indexBufferPoints, IndexBufferRAM* indexBufferLines, std::vector<BasicMesh::Vertex>& vertices,
        dvec2 pos00,dvec2 pos01,dvec2 pos10,dvec2 pos11, float lengthX,
         float lengthY, float minLength);
+
+	static TypeCP analyzeCriticalPoint(const VectorField2& vectorField, const dvec2& criticalPoint);
+    static void getSeedingPointsFromSaddle(const VectorField2& vectorField,
+                                           const dvec2& saddlePoint, dvec2 (&out)[2],
+                                           dvec2 (&in)[2]);
+	static void drawSeparatrices(const VectorField2& vectorField, IndexBufferRAM* indexBuffer,
+                                 std::vector<BasicMesh::Vertex>& vertices,
+								 const dvec2& saddlePoint);
+
+	static void drawSingleSeparatrice(const VectorField2& vectorField, IndexBufferRAM* indexBuffer,
+                                    std::vector<BasicMesh::Vertex>& vertices,
+                                    const dvec2& seedingPoint, bool inverted);
 
     // Ports
 public:

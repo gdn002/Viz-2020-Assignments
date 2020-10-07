@@ -253,6 +253,10 @@ bool inviwo::Integrator::RK4Lite(const VectorField2& vectorField, const dvec2& s
 	return true;
 }
 
+dvec2 inviwo::Integrator::Add(const dvec2& v1, const dvec2& v2) { 
+	return {v1.x + v2.x, v1.y + v2.y};
+}
+
 dvec2 Integrator::Multiply(const dvec2& vector, const float& factor) {
     dvec2 v = vector;
     v.x *= factor;
