@@ -45,6 +45,8 @@ Topology::Topology()
 // default value (optional), minimum value (optional), maximum value (optional), increment
 // (optional)); propertyIdentifier cannot have spaces
     , propMinLength("minimumLength", "Minimum Cell Length", 1.0f, 0.000001f, 5, 0.01f)
+	, propDrawSeparatrices("drawSeparatrices", "Draw Separatrices", false)
+	, propMaxSeparatrices("maxSeparatrices", "Maximum Separatrice Cycles", 100, 10, 1000)
 {
     // Register Ports
     addPort(outMesh);
@@ -54,6 +56,8 @@ Topology::Topology()
     // TODO: Register additional properties
     // addProperty(propertyName);
     addProperty(propMinLength);
+    addProperty(propDrawSeparatrices);
+    addProperty(propMaxSeparatrices);
 }
 
 void Topology::process() {
@@ -113,7 +117,7 @@ void Topology::process() {
             
             checkChangeOfSign(vectorField, indexBufferPoints.get(),
                               indexBufferSeparatrices.get(), vertices, p_00, p_10, p_01, p_11,
-                              p_10.x - p_00.x, p_01.y - p_00.y, propMinLength.get());
+                              p_10.x - p_00.x, p_01.y - p_00.y);
         }
     }
 
@@ -135,8 +139,7 @@ void Topology::process() {
 
 void Topology::checkChangeOfSign(const VectorField2& vectorField,
     IndexBufferRAM* indexBufferPoints, IndexBufferRAM* indexBufferLines, std::vector<BasicMesh::Vertex>& vertices, dvec2
-    pos00,dvec2 pos10,dvec2 pos01,dvec2 pos11, float lengthX, float lengthY,
-    float minLength){
+    pos00,dvec2 pos10,dvec2 pos01,dvec2 pos11, float lengthX, float lengthY){
    dvec2 v_00 = vectorField.interpolate(pos00);
    dvec2 v_10 = vectorField.interpolate(pos10);
    dvec2 v_01 = vectorField.interpolate(pos01);
@@ -166,10 +169,10 @@ void Topology::checkChangeOfSign(const VectorField2& vectorField,
       else{
         // this may be a critical point
         //stop condition
-        if(lengthX < minLength || lengthY < minLength){
+        if(lengthX < propMinLength.get() || lengthY < propMinLength.get()){
             auto t = analyzeCriticalPoint(vectorField, pos00);
 
-			if (t == TypeCP::Saddle) {
+			if (propDrawSeparatrices.get() && t == TypeCP::Saddle) {
                 drawSeparatrices(vectorField, indexBufferLines, vertices, pos00);
 
             }
@@ -185,10 +188,10 @@ void Topology::checkChangeOfSign(const VectorField2& vectorField,
        dvec2 midC = {pos00.x+lengthX, pos00.y+lengthY};
        dvec2 midR = {pos10.x, pos10.y+lengthY};
        dvec2 midU = {pos01.x+lengthX, pos01.y};
-        checkChangeOfSign(vectorField,indexBufferPoints,indexBufferLines,vertices,pos00,midD,midL,midC,lengthX,lengthY,minLength);
-        checkChangeOfSign(vectorField,indexBufferPoints,indexBufferLines,vertices,midD,pos10,midC,midR,lengthX,lengthY,minLength);
-        checkChangeOfSign(vectorField,indexBufferPoints,indexBufferLines,vertices,midL,midC,pos01,midU,lengthX,lengthY,minLength);
-        checkChangeOfSign(vectorField,indexBufferPoints,indexBufferLines,vertices,midC,midR,midU,pos11,lengthX,lengthY,minLength);
+        checkChangeOfSign(vectorField,indexBufferPoints,indexBufferLines,vertices,pos00,midD,midL,midC,lengthX,lengthY);
+        checkChangeOfSign(vectorField,indexBufferPoints,indexBufferLines,vertices,midD,pos10,midC,midR,lengthX,lengthY);
+        checkChangeOfSign(vectorField,indexBufferPoints,indexBufferLines,vertices,midL,midC,pos01,midU,lengthX,lengthY);
+        checkChangeOfSign(vectorField,indexBufferPoints,indexBufferLines,vertices,midC,midR,midU,pos11,lengthX,lengthY);
         
     }
 
@@ -298,7 +301,7 @@ void inviwo::Topology::drawSingleSeparatrice(const VectorField2& vectorField,
 	double stepSize = 0.1;
 
 	// Integrate line until it hits a sink or a boundary
-    for (size_t i = 0; i < 100; i++) {
+    for (size_t i = 0; i < propMaxSeparatrices.get(); i++) {
 		if (!Integrator::RK4Lite(vectorField, current, next, stepSize, false, inverted)) return;
         Integrator::drawLineSegment(current, next, {1, 1, 1, 1}, indexBuffer, vertices);
         current = next;
