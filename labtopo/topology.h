@@ -68,27 +68,34 @@ protected:
     // Our main computation function
     virtual void process() override;
 
-    // TODO: You may want to declare additional functions here, e.g., extractCriticalPoints.
-
     static void drawLineSegment(const dvec2& v1, const dvec2& v2, const vec4& color,
                                 IndexBufferRAM* indexBuffer,
                                 std::vector<BasicMesh::Vertex>& vertices);
+
     void checkChangeOfSign(const VectorField2& vectorField,
         IndexBufferRAM* indexBufferPoints, IndexBufferRAM* indexBufferLines, std::vector<BasicMesh::Vertex>& vertices,
-       dvec2 pos00,dvec2 pos01,dvec2 pos10,dvec2 pos11, float lengthX,
-        float lengthY);
+        dvec2 pos00, dvec2 pos01, dvec2 pos10, dvec2 pos11, float lengthX, float lengthY);
 
-	TypeCP analyzeCriticalPoint(const VectorField2& vectorField, const dvec2& criticalPoint);
+    void checkChangeOfSignX(const VectorField2& vectorField,
+        IndexBufferRAM* indexBufferPoints, IndexBufferRAM* indexBufferLines,
+        std::vector<BasicMesh::Vertex>& vertices, dvec2 p0, dvec2 p1, float lengthX);
+
+    void checkChangeOfSignY(const VectorField2& vectorField,
+        IndexBufferRAM* indexBufferPoints, IndexBufferRAM* indexBufferLines,
+        std::vector<BasicMesh::Vertex>& vertices, dvec2 p0, dvec2 p1, float lengthY);
+
+    TypeCP analyzeCriticalPoint(const VectorField2& vectorField, const dvec2& criticalPoint);
+
     void getSeedingPointsFromSaddle(const VectorField2& vectorField,
-                                           const dvec2& saddlePoint, dvec2 (&out)[2],
-                                           dvec2 (&in)[2]);
-	void drawSeparatrices(const VectorField2& vectorField, IndexBufferRAM* indexBuffer,
-                                 std::vector<BasicMesh::Vertex>& vertices,
-								 const dvec2& saddlePoint);
+                                    const dvec2& saddlePoint, dvec2 (&out)[2],
+                                    dvec2 (&in)[2]);
 
-	void drawSingleSeparatrice(const VectorField2& vectorField, IndexBufferRAM* indexBuffer,
-                                    std::vector<BasicMesh::Vertex>& vertices,
-                                    const dvec2& seedingPoint, bool inverted);
+    void drawSeparatrices(const VectorField2& vectorField, IndexBufferRAM* indexBuffer,
+                          std::vector<BasicMesh::Vertex>& vertices, const dvec2& saddlePoint);
+
+    void drawSingleSeparatrice(const VectorField2& vectorField, IndexBufferRAM* indexBuffer,
+                               std::vector<BasicMesh::Vertex>& vertices,
+                               const dvec2& seedingPoint, bool inverted);
 
     // Ports
 public:
