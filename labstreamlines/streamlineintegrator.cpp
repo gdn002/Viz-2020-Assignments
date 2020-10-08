@@ -52,7 +52,7 @@ StreamlineIntegrator::StreamlineIntegrator()
     , propBackwardDirection("backwardDirection", "Backward Direction", false)
     , propNormalizedField("normalizedField", "Normalized Vector Field")
     , propMinimumVelocity("minimumVelocity", "Minimum Velocity", 0.1f, 0, 5, 0.1f)
-    , propMaximumArcLength("maximumArcLength", "Maximum Arc Length", 5, 0, 20, 0.5f)
+    , propMaximumArcLength("maximumArcLength", "Maximum Arc Length", 5, 0, 100, 0.5f)
     , mouseMoveStart(
           "mouseMoveStart", "Move Start", [this](Event* e) { eventMoveStart(e); },
           MouseButton::Left, MouseState::Press | MouseState::Move)
