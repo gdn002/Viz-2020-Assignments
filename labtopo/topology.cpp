@@ -116,11 +116,44 @@ void Topology::process() {
             p_10 = vectorField.getPositionAtVertex(size2_t(i+1, j));
             p_01 = vectorField.getPositionAtVertex(size2_t(i, j+1));
             p_11 = vectorField.getPositionAtVertex(size2_t(i+1, j+1));
-            
+
             checkChangeOfSign(vectorField, indexBufferPoints.get(),
                               indexBufferSeparatrices.get(), vertices, p_00, p_10, p_01, p_11,
                               p_10.x - p_00.x, p_01.y - p_00.y);
         }
+    }
+
+    // Loop through horizontal (X-axis) boundary lines
+    dvec2 p0, p1;
+    for (size_t i = 0; i < dims[0]-1; ++i) {
+        // Find boundary switch points on the lower line
+        p0 = vectorField.getPositionAtVertex(size2_t(i, 0));
+        p1 = vectorField.getPositionAtVertex(size2_t(i+1, 0));
+        checkChangeOfSignX(vectorField, indexBufferPoints.get(),
+                           indexBufferSeparatrices.get(), vertices, p0, p1, p1.x - p0.x);
+
+       // Find boundary switch points on the upper line
+       p0 = vectorField.getPositionAtVertex(size2_t(i, dims[1]-1));
+       p1 = vectorField.getPositionAtVertex(size2_t(i+1, dims[1]-1));
+       checkChangeOfSignX(vectorField, indexBufferPoints.get(),
+                          indexBufferSeparatrices.get(), vertices, p0, p1, p1.x - p0.x);
+
+    }
+
+    // Loop through vertical (Y-axis) boundary lines
+    for (size_t j = 0; j < dims[1]-1; ++j) {
+        // Find boundary switch points on the left line
+        p0 = vectorField.getPositionAtVertex(size2_t(0, j));
+        p1 = vectorField.getPositionAtVertex(size2_t(0, j+1));
+        checkChangeOfSignY(vectorField, indexBufferPoints.get(),
+                           indexBufferSeparatrices.get(), vertices, p0, p1, p1.y - p0.y);
+
+       // Find boundary switch points on the right line
+       p0 = vectorField.getPositionAtVertex(size2_t(dims[0]-1, j));
+       p1 = vectorField.getPositionAtVertex(size2_t(dims[0]-1, j+1));
+       checkChangeOfSignY(vectorField, indexBufferPoints.get(),
+                          indexBufferSeparatrices.get(), vertices, p0, p1, p1.y - p0.y);
+
     }
 
     // Other helpful functions
@@ -163,7 +196,7 @@ void Topology::checkChangeOfSign(const VectorField2& vectorField,
     //    // this is a critical point
     //    Integrator::drawPoint(pos00, {0,0,0,1}, indexBuffer, vertices);
     //}
-    //else 
+    //else
       if ((v_00.x>=0 && v_01.x>=0 && v_10.x>=0 && v_11.x>=0) || //if not all x have the same sign
               (v_00.x<0 && v_01.x<0 && v_10.x<0 && v_11.x<0) ||
           (v_00.y>=0 && v_01.y>=0 && v_10.y>=0 && v_11.y>=0) || //and not all y have the same sign
@@ -184,7 +217,7 @@ void Topology::checkChangeOfSign(const VectorField2& vectorField,
 
         lengthX /= 2;
         lengthY /= 2;
-    
+
        dvec2 midD = {pos00.x+lengthX, pos00.y};
        dvec2 midL = {pos00.x, pos00.y+lengthY};
        dvec2 midC = {pos00.x+lengthX, pos00.y+lengthY};
@@ -194,9 +227,73 @@ void Topology::checkChangeOfSign(const VectorField2& vectorField,
         checkChangeOfSign(vectorField,indexBufferPoints,indexBufferLines,vertices,midD,pos10,midC,midR,lengthX,lengthY);
         checkChangeOfSign(vectorField,indexBufferPoints,indexBufferLines,vertices,midL,midC,pos01,midU,lengthX,lengthY);
         checkChangeOfSign(vectorField,indexBufferPoints,indexBufferLines,vertices,midC,midR,midU,pos11,lengthX,lengthY);
-        
+
     }
 
+}
+
+void Topology::checkChangeOfSignX(const VectorField2& vectorField,
+    IndexBufferRAM* indexBufferPoints, IndexBufferRAM* indexBufferLines,
+    std::vector<BasicMesh::Vertex>& vertices, dvec2 p0, dvec2 p1, float lengthX) {
+    dvec2 v0 = vectorField.interpolate(p0);
+    dvec2 v1 = vectorField.interpolate(p1);
+
+    if ((v0.y>=0 && v1.y>=0) || (v0.y<0 && v1.y<0)){}
+    else {
+        // This may be a boundary switch point
+        if(lengthX < propMinLength.get()) {
+            // Integrate and draw the separatrices (can use the switch point
+            // as seed since this boundary point is not a critical point)
+            if (propDrawSeparatrices.get()) {
+                drawSingleSeparatrice(vectorField, indexBufferLines, vertices, p0, true);
+                drawSingleSeparatrice(vectorField, indexBufferLines, vertices, p0, false);
+            }
+
+            vec4 color = {1.0, 1.0, 1.0, 1.0};
+            Integrator::drawPoint(p0, color, indexBufferPoints, vertices);
+            return;
+        }
+
+        lengthX /= 2;
+        dvec2 midPoint = {p0.x+lengthX, p0.y};
+
+        checkChangeOfSignX(vectorField, indexBufferPoints, indexBufferLines,
+                           vertices, p0, midPoint, lengthX);
+        checkChangeOfSignX(vectorField, indexBufferPoints, indexBufferLines,
+                           vertices, midPoint, p1, lengthX);
+    }
+}
+
+void Topology::checkChangeOfSignY(const VectorField2& vectorField,
+    IndexBufferRAM* indexBufferPoints, IndexBufferRAM* indexBufferLines,
+    std::vector<BasicMesh::Vertex>& vertices, dvec2 p0, dvec2 p1, float lengthY) {
+    dvec2 v0 = vectorField.interpolate(p0);
+    dvec2 v1 = vectorField.interpolate(p1);
+
+    if ((v0.x>=0 && v1.x>=0) || (v0.x<0 && v1.x<0)){}
+    else {
+        // This may be a boundary switch point
+        if(lengthY < propMinLength.get()) {
+            // Integrate and draw the separatrices (can use the switch point
+            // as seed since this boundary point is not a critical point)
+            if (propDrawSeparatrices.get()) {
+                drawSingleSeparatrice(vectorField, indexBufferLines, vertices, p0, true);
+                drawSingleSeparatrice(vectorField, indexBufferLines, vertices, p0, false);
+            }
+
+            vec4 color = {1.0, 1.0, 1.0, 1.0};
+            Integrator::drawPoint(p0, color, indexBufferPoints, vertices);
+            return;
+        }
+
+        lengthY /= 2;
+        dvec2 midPoint = {p0.x, p0.y+lengthY};
+
+        checkChangeOfSignY(vectorField, indexBufferPoints, indexBufferLines,
+                           vertices, p0, midPoint, lengthY);
+        checkChangeOfSignY(vectorField, indexBufferPoints, indexBufferLines,
+                           vertices, midPoint, p1, lengthY);
+    }
 }
 
 void Topology::drawLineSegment(const dvec2& v1, const dvec2& v2, const vec4& color,
