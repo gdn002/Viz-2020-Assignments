@@ -47,6 +47,7 @@ Topology::Topology()
     , propMinLength("minimumLength", "Minimum Cell Length", 1.0f, 0.000001f, 5, 0.01f)
 	, propDrawSeparatrices("drawSeparatrices", "Draw Separatrices", false)
 	, propMaxSeparatrices("maxSeparatrices", "Maximum Separatrice Cycles", 100, 10, 1000)
+	, propSeparatriceOffset("separatriceOffset", "Separatrice Offset", 0.001, 0.001, 1)
 {
     // Register Ports
     addPort(outMesh);
@@ -58,6 +59,7 @@ Topology::Topology()
     addProperty(propMinLength);
     addProperty(propDrawSeparatrices);
     addProperty(propMaxSeparatrices);
+    addProperty(propSeparatriceOffset);
 }
 
 void Topology::process() {
@@ -249,7 +251,7 @@ void inviwo::Topology::getSeedingPointsFromSaddle(const VectorField2& vectorFiel
     auto eigenValues = util::eigenAnalysis(vectorField.derive(saddlePoint));
 
     // The initial step from the saddle point at which the line is seeded
-    double firstStep = 0.001;
+    double firstStep = propSeparatriceOffset.get();
 
 
     // Check for outbound seeding points (positive EigenValue)

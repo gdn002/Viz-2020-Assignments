@@ -78,8 +78,8 @@ protected:
        dvec2 pos00,dvec2 pos01,dvec2 pos10,dvec2 pos11, float lengthX,
         float lengthY);
 
-	static TypeCP analyzeCriticalPoint(const VectorField2& vectorField, const dvec2& criticalPoint);
-    static void getSeedingPointsFromSaddle(const VectorField2& vectorField,
+	TypeCP analyzeCriticalPoint(const VectorField2& vectorField, const dvec2& criticalPoint);
+    void getSeedingPointsFromSaddle(const VectorField2& vectorField,
                                            const dvec2& saddlePoint, dvec2 (&out)[2],
                                            dvec2 (&in)[2]);
 	void drawSeparatrices(const VectorField2& vectorField, IndexBufferRAM* indexBuffer,
@@ -105,6 +105,7 @@ public:
     FloatProperty propMinLength;
     BoolProperty propDrawSeparatrices;
     IntProperty propMaxSeparatrices;
+    DoubleProperty propSeparatriceOffset;
 
 };  // namespace inviwo
 
